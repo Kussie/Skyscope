@@ -1,0 +1,75 @@
+# SkyScope
+
+A small tool for finding SkyPatcher conflicts. If you have multiple NPC overhauls installed there's a decent chance some of them are fighting over the same NPCs through SkyPatcher config files — SkyScope scans those configs and tells you exactly which ones.
+
+## What it does
+
+- Scans `Data\SKSE\Plugins\SkyPatcher` (both `npc` and `outfit` subdirectories) and finds INI rules that target the same NPC with the same rule type across multiple mods
+- Resolves NPC names and EditorIDs from your plugin files so you see "Lydia" instead of `Skyrim.esm|13480`
+- Shows the exact conflicting lines with surrounding context, and which file wins based on SkyPatcher's load order (alphabetical by full path)
+- Lets you fix a conflict directly: hover a result in the detail view and click **Make Winner** to have SkyScope comment out the losing rules
+
+## Requirements
+
+- Windows
+- [.NET 6.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/6.0)
+
+## Installation
+
+Download the latest release, extract it somewhere, run `SkyScope.UI.exe`.
+
+## Usage
+
+Point it at your Skyrim game directory and click **Analyze Mods**. It'll try to auto-detect common Steam and Bethesda Launcher paths on startup so you may not need to do anything.
+
+Once results are in, hover any row for a quick summary or double-click to open the detail view. The detail view shows the raw lines from each conflicting file with the line above and below for context, listed in SkyPatcher load order so it's clear which one wins. Hover any file card and click **Make Winner** to comment out the conflicting rules in all the other files. SkyScope adds a `; Rule commented out by SkyScope` marker above each commented line so they're easy to find and revert. Re-run the analysis afterwards to confirm the conflict is resolved.
+
+**Export Report** saves everything to a timestamped text file if you want a record before making changes.
+
+---
+
+### Mod manager setup
+
+**Manual installs and Vortex** work out of the box. Vortex deploys mod files directly into your Data folder so SkyScope sees them the same as a manual install.
+
+**MO2 is a bit different.** MO2's virtual filesystem only exists while something is running through MO2, so if you launch SkyScope normally it won't see any of your mod files. The easiest fix is to add SkyScope as an executable inside MO2 — go to Tools → Executables, click Add from file, and point it at `SkyScope.UI.exe`. Launch it from the MO2 toolbar and the VFS kicks in automatically.
+
+---
+
+### Screenshots
+![Main window](<Screenshots/Screenshot 2026-05-26 100052.png>)
+![Conflict details tooltip](<Screenshots/Screenshot 2026-05-26 100100.png>)
+![Conflict details window](<Screenshots/Screenshot 2026-05-26 100110.png>)
+![Resolve conflict options](<Screenshots/Screenshot 2026-05-26 100322.png>)
+
+---
+
+### Conflict types
+
+SkyPatcher has three rule types that SkyScope checks for conflicts:
+
+- **Appearance** — `copyVisualStyle` rules that copy a visual template from one NPC onto another
+- **Skin** — `skin` overrides
+- **Default Outfit** — `outfitDefault` assignments
+
+In all cases, when two or more mods target the same NPC with the same rule type, the file that sorts last alphabetically by its full path wins. SkyScope shows you the load position of each file in the detail view.
+
+---
+
+## Building from source
+
+Requires the .NET 6 SDK.
+
+```bash
+dotnet restore
+dotnet build
+dotnet run --project SkyScope.UI/SkyScope.UI.csproj
+```
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+## License
+
+Provided as-is for the Skyrim modding community.

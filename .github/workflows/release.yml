@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Publish
+        run: dotnet publish SkyScope.UI/SkyScope.UI.csproj -c Release -r win-x64 --self-contained false -o publish
+
+      - name: Generate version tag
+        id: version
+        shell: bash
+        run: |
+          PREFIX=$(date +'%Y%m')
+          git fetch --tags
+          COUNT=$(git tag -l | grep -E '^[0-9]{6}\.[0-9]+$' | wc -l)
+          NEXT=$((COUNT + 1))
+          echo "tag=${PREFIX}.${NEXT}" >> $GITHUB_OUTPUT
+
+      - name: Tag release
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+
+      - name: Package
+        shell: pwsh
+        run: Compress-Archive -Path publish\* -DestinationPath SkyScope-${{ steps.version.outputs.tag }}.zip
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: SkyScope ${{ steps.version.outputs.tag }}
+          make_latest: true
+          generate_release_notes: true
+          files: SkyScope-${{ steps.version.outputs.tag }}.zip
