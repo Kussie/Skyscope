@@ -77,6 +77,34 @@
             </Setter>
         </Style>
 
+        <Style x:Key="OpenFileButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#5E81AC"/>
+            <Setter Property="Foreground" Value="#ECEFF4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="24,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#6E91BC"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#4E719C"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid>
@@ -259,17 +287,24 @@
                             </Border>
                             <!-- END Card -->
 
-                            <!-- Make Winner overlay — revealed on mouse-over by DataTemplate.Triggers -->
+                            <!-- Hover overlay — revealed on mouse-over by DataTemplate.Triggers -->
                             <Border x:Name="MakeWinnerOverlay"
                                     CornerRadius="4"
                                     Background="#D02E3440"
                                     Visibility="Hidden">
-                                <Button Content="Make Winner"
-                                        Style="{StaticResource MakeWinnerButtonStyle}"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Tag="{Binding}"
-                                        Click="MakeWinner_Click"/>
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                    <Button Content="Make Winner"
+                                            Style="{StaticResource MakeWinnerButtonStyle}"
+                                            Margin="0,0,10,0"
+                                            Tag="{Binding}"
+                                            Click="MakeWinner_Click"/>
+                                    <Button Content="Open File"
+                                            Style="{StaticResource OpenFileButtonStyle}"
+                                            Tag="{Binding}"
+                                            Click="OpenFile_Click"/>
+                                </StackPanel>
                             </Border>
 
                         </Grid>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -235,6 +236,22 @@ public partial class ConflictDetailWindow : Window
         updated.Insert(idx, $"{new string(' ', indent)}; {npcIdentifier} removed from rule to resolve a conflict by SkyScope");
         updated[idx + 1] = newLine;
         File.WriteAllLines(filePath, updated);
+    }
+
+    private void OpenFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn) return;
+        if (btn.Tag is not SourceViewModel src) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(src.FilePath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open file:\n\n{ex.Message}", "SkyScope — Open File",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();

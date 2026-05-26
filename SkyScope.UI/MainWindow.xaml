@@ -391,7 +391,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="NPC"    Binding="{Binding DisplayName}"    Width="*"   ElementStyle="{StaticResource CellTextStyle}"/>
                                 <DataGridTextColumn Header="Winner" Binding="{Binding WinnerFileName}" Width="170" ElementStyle="{StaticResource WinnerCellStyle}"/>
-                                <DataGridTextColumn Header="Files"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
+                                <DataGridTextColumn Header="Conflicts"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
                             </DataGrid.Columns>
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow" BasedOn="{StaticResource GridRowStyle}">
@@ -441,7 +441,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="NPC"    Binding="{Binding DisplayName}"    Width="*"   ElementStyle="{StaticResource CellTextStyle}"/>
                                 <DataGridTextColumn Header="Winner" Binding="{Binding WinnerFileName}" Width="170" ElementStyle="{StaticResource WinnerCellStyle}"/>
-                                <DataGridTextColumn Header="Files"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
+                                <DataGridTextColumn Header="Conflicts"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
                             </DataGrid.Columns>
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow" BasedOn="{StaticResource GridRowStyle}">
@@ -491,7 +491,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="NPC"    Binding="{Binding DisplayName}"    Width="*"   ElementStyle="{StaticResource CellTextStyle}"/>
                                 <DataGridTextColumn Header="Winner" Binding="{Binding WinnerFileName}" Width="170" ElementStyle="{StaticResource WinnerCellStyle}"/>
-                                <DataGridTextColumn Header="Files"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
+                                <DataGridTextColumn Header="Conflicts"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
                             </DataGrid.Columns>
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow" BasedOn="{StaticResource GridRowStyle}">

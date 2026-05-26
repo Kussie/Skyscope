@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using SkyScope.Models;
 
 namespace SkyScope.Core;
@@ -66,14 +67,18 @@ public class ConflictDetector
     {
         foreach (var (_, (npcRef, sources)) in map)
         {
-            if (sources.Count > 1)
+            if (sources.Count < 2) continue;
+
+            // All sources set the same value — redundant but not a true conflict
+            var first = sources[0].RuleValue;
+            if (sources.All(s => string.Equals(s.RuleValue, first, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            target.Add(new ConflictEntry
             {
-                target.Add(new ConflictEntry
-                {
-                    NpcRef  = npcRef,
-                    Sources = new List<ConflictSource>(sources)
-                });
-            }
+                NpcRef  = npcRef,
+                Sources = new List<ConflictSource>(sources)
+            });
         }
     }
 }
