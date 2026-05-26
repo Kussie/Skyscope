@@ -68,3 +68,4 @@ jobs:
           file_category: main
           archive_existing_file: true
           allow_mod_manager_download: false
+          
