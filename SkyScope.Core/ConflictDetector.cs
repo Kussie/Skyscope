@@ -7,7 +7,7 @@ namespace SkyScope.Core;
 
 public class ConflictDetector
 {
-    public ConflictSummary DetectConflicts(List<ModConfiguration> configurations)
+    public ConflictSummary DetectConflicts(List<ModConfiguration> configurations, NpcNameDatabase? db = null)
     {
         // Maps: normalizedNpcKey -> (representative NpcReference, list of conflict sources)
         var appearanceMap = new Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)>();
@@ -30,7 +30,7 @@ public class ConflictDetector
 
                 foreach (var npcRef in rule.TargetNpcs)
                 {
-                    var key = npcRef.NormalizedKey;
+                    var key = ResolveKey(npcRef, db);
                     if (string.IsNullOrEmpty(key)) continue;
 
                     if (!map.TryGetValue(key, out var entry))
@@ -59,6 +59,28 @@ public class ConflictDetector
         BuildConflicts(outfitMap,     summary.OutfitDefaultConflicts);
 
         return summary;
+    }
+
+    // Resolve any reference type to a canonical "EID:..." key when the NPC database is available,
+    // so that FormId, EditorId, and Name references to the same NPC share a single map entry.
+    private static string ResolveKey(NpcReference npcRef, NpcNameDatabase? db)
+    {
+        if (db != null)
+        {
+            if (npcRef.RefType == NpcRefType.RecordId)
+            {
+                var eid = db.ResolveEditorId(npcRef.Plugin, npcRef.FormId);
+                if (!string.IsNullOrEmpty(eid))
+                    return $"EID:{eid.ToLowerInvariant()}";
+            }
+            else if (npcRef.RefType == NpcRefType.Name)
+            {
+                var eid = db.FindEditorIdByName(npcRef.Identifier);
+                if (!string.IsNullOrEmpty(eid))
+                    return $"EID:{eid.ToLowerInvariant()}";
+            }
+        }
+        return npcRef.NormalizedKey;
     }
 
     private static void BuildConflicts(

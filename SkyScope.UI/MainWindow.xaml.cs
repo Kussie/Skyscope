@@ -157,19 +157,19 @@ public partial class MainWindow : Window
                 return;
             }
 
-            StatusTextBlock.Text = $"Found {configs.Count} INI file(s). Detecting conflicts…";
-
-            var summary = await Task.Run(() =>
-            {
-                var detector = new ConflictDetector();
-                var s = detector.DetectConflicts(configs);
-                s.TotalFilesScanned = configs.Count;
-                return s;
-            });
-
+            StatusTextBlock.Text = $"Found {configs.Count} INI file(s). Loading NPC database…";
             var progress = new Progress<string>(msg => StatusTextBlock.Text = msg);
             var db       = new NpcNameDatabase();
             await Task.Run(() => db.Load(skyrimPath, progress));
+
+            StatusTextBlock.Text = "Detecting conflicts…";
+            var summary = await Task.Run(() =>
+            {
+                var detector = new ConflictDetector();
+                var s = detector.DetectConflicts(configs, db);
+                s.TotalFilesScanned = configs.Count;
+                return s;
+            });
 
             await Task.Run(() => ResolveNames(summary, db));
 
