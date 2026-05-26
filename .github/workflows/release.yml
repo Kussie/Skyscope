@@ -24,7 +24,7 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: Publish
-        run: dotnet publish SkyScope.UI/SkyScope.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+        run: dotnet publish SkyScope.UI/SkyScope.UI.csproj -c Release -r win-x64 --self-contained true -o publish
 
       - name: Generate version tag
         id: version
