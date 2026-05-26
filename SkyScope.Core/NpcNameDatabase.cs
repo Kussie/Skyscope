@@ -11,6 +11,12 @@ public class NpcNameDatabase
     // (plugin.ToLower(), localFormId) -> (fullName, editorId)
     private readonly Dictionary<(string, uint), (string? Name, string? EditorId)> _lookup = new();
 
+    // fullName (case-insensitive) -> editorId — for resolving SPID StringFilter targets
+    private readonly Dictionary<string, string> _nameToEditorId = new(StringComparer.OrdinalIgnoreCase);
+
+    // all known NPC editorIds — used to reject SPID FormFilter values that are factions/keywords
+    private readonly HashSet<string> _editorIdSet = new(StringComparer.OrdinalIgnoreCase);
+
     public bool IsLoaded    { get; private set; }
     public int  RecordCount => _lookup.Count;
 
@@ -19,6 +25,8 @@ public class NpcNameDatabase
     public void Load(string skyrimGameDirectory, IProgress<string>? progress = null)
     {
         _lookup.Clear();
+        _nameToEditorId.Clear();
+        _editorIdSet.Clear();
         NpcCountByPlugin.Clear();
         IsLoaded = false;
 
@@ -59,6 +67,12 @@ public class NpcNameDatabase
                         _lookup[key] = (npc.FullName, npc.EditorId);
                         added++;
                     }
+
+                    if (!string.IsNullOrEmpty(npc.FullName) && !string.IsNullOrEmpty(npc.EditorId))
+                        _nameToEditorId[npc.FullName] = npc.EditorId;
+
+                    if (!string.IsNullOrEmpty(npc.EditorId))
+                        _editorIdSet.Add(npc.EditorId);
                 }
 
                 NpcCountByPlugin[fileName] = parsed.Npcs.Count;
@@ -86,6 +100,11 @@ public class NpcNameDatabase
         var (_, editorId) = Lookup(plugin, formIdHex);
         return editorId;
     }
+
+    public string? FindEditorIdByName(string name) =>
+        _nameToEditorId.TryGetValue(name, out var editorId) ? editorId : null;
+
+    public bool IsNpcEditorId(string editorId) => _editorIdSet.Contains(editorId);
 
     private (string? Name, string? EditorId) Lookup(string plugin, string formIdHex)
     {

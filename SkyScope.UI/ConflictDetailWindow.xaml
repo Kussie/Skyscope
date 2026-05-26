@@ -167,6 +167,20 @@
                                                         </TextBlock.Text>
                                                     </TextBlock>
                                                 </Border>
+                                                <Border CornerRadius="10" Padding="7,2" Margin="0,0,6,0">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSpid}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Setter Property="Background" Value="#3D2B50"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding SpidBadgeText}" FontSize="9" FontWeight="SemiBold" Foreground="#C882F8"/>
+                                                </Border>
                                                 <Border CornerRadius="10" Padding="7,2">
                                                     <Border.Style>
                                                         <Style TargetType="Border">

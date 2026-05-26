@@ -59,6 +59,8 @@ public class SkyPatcherRule
     public string? PrecedingLine { get; set; }  // null = first line of file
     public string  LineText      { get; set; } = string.Empty;
     public string? FollowingLine { get; set; }  // null = last line of file
+    public string  SourceTool    { get; set; } = "SkyPatcher";
+    public int?    SpidChance    { get; set; }  // null = not a SPID rule; 0-100 when set
 }
 
 public class ConflictSource
@@ -69,6 +71,9 @@ public class ConflictSource
     public string  ConflictLine  { get; set; } = string.Empty;
     public string? FollowingLine { get; set; }
     public string  RuleValue     { get; set; } = string.Empty;
+    public string  SourceTool         { get; set; } = "SkyPatcher";
+    public int?    SpidChance         { get; set; }
+    public string? SpidNpcIdentifier  { get; set; }  // exact text from SPID file that matched this conflict
 }
 
 public class ModConfiguration

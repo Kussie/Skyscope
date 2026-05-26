@@ -173,13 +173,24 @@ public partial class MainWindow : Window
 
             await Task.Run(() => ResolveNames(summary, db));
 
+            StatusTextBlock.Text = "Scanning SPID distribution files…";
+            var (spidRules, spidFileCount) = await Task.Run(() =>
+                new SpidConfigParser().LoadOutfitRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+
+            if (spidRules.Count > 0)
+            {
+                StatusTextBlock.Text = $"Found {spidRules.Count} SPID outfit rule(s). Merging conflicts…";
+                await Task.Run(() => MergeSpidConflicts(summary, configs, spidRules, db));
+            }
+
             _lastSummary = summary;
             DisplayResults(summary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0;
 
+            var spidSuffix = spidFileCount > 0 ? $"  SPID: {spidFileCount} file(s), {spidRules.Count} outfit rule(s)." : string.Empty;
             StatusTextBlock.Text = summary.TotalConflicts == 0
-                ? $"Analysis complete — no conflicts in {configs.Count} file(s).  NPC database: {db.RecordCount:N0} record(s)."
-                : $"Analysis complete — {summary.TotalConflicts} conflict(s) in {configs.Count} file(s).  NPC database: {db.RecordCount:N0} record(s).";
+                ? $"Analysis complete — no conflicts in {configs.Count} file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}"
+                : $"Analysis complete — {summary.TotalConflicts} conflict(s) in {configs.Count} file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}";
         }
         catch (Exception ex)
         {
@@ -202,6 +213,127 @@ public partial class MainWindow : Window
             entry.ResolvedEditorId = db.ResolveEditorId(entry.NpcRef.Plugin, entry.NpcRef.FormId);
         }
     }
+
+    private static void MergeSpidConflicts(
+        ConflictSummary summary,
+        List<ModConfiguration> skyPatcherConfigs,
+        List<SkyPatcherRule> spidRules,
+        NpcNameDatabase db)
+    {
+        // Build EditorId index of every SkyPatcher outfit rule (not just conflicting ones).
+        var spByEditorId = new Dictionary<string, List<SkyPatcherRule>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var config in skyPatcherConfigs)
+        {
+            foreach (var rule in config.Rules)
+            {
+                if (rule.RuleType != RuleType.OutfitDefault) continue;
+
+                foreach (var npcRef in rule.TargetNpcs)
+                {
+                    var eid = npcRef.RefType switch
+                    {
+                        NpcRefType.RecordId => db.ResolveEditorId(npcRef.Plugin, npcRef.FormId),
+                        NpcRefType.EditorId => npcRef.Identifier,
+                        NpcRefType.Name     => db.FindEditorIdByName(npcRef.Identifier),
+                        _                   => null
+                    };
+
+                    if (string.IsNullOrEmpty(eid)) continue;
+
+                    if (!spByEditorId.TryGetValue(eid, out var list))
+                        spByEditorId[eid] = list = new();
+
+                    if (!list.Exists(r => string.Equals(r.SourceFile, rule.SourceFile, StringComparison.OrdinalIgnoreCase)))
+                        list.Add(rule);
+                }
+            }
+        }
+
+        // Index existing conflict entries by resolved EditorId.
+        var conflictByEditorId = new Dictionary<string, ConflictEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in summary.OutfitDefaultConflicts)
+        {
+            if (!string.IsNullOrEmpty(entry.ResolvedEditorId))
+                conflictByEditorId[entry.ResolvedEditorId] = entry;
+        }
+
+        // Group SPID rules by resolved EditorId, recording which identifier text matched.
+        // StringFilter refs (Name type) go through the name→EditorId reverse lookup first.
+        var spidByEditorId = new Dictionary<string, (NpcReference NpcRef, List<(SkyPatcherRule Rule, string Identifier)> Entries)>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var rule in spidRules)
+        {
+            foreach (var npcRef in rule.TargetNpcs)
+            {
+                string? eid;
+                if (npcRef.RefType == NpcRefType.EditorId)
+                {
+                    // Reject values that aren't actually NPC EditorIds (factions, keywords, etc.)
+                    if (!db.IsNpcEditorId(npcRef.Identifier)) continue;
+                    eid = npcRef.Identifier;
+                }
+                else
+                {
+                    // Reject names that can't be resolved to a known NPC
+                    eid = db.FindEditorIdByName(npcRef.Identifier);
+                    if (eid == null) continue;
+                }
+
+                if (!spidByEditorId.TryGetValue(eid, out var entry))
+                    spidByEditorId[eid] = (npcRef, new());
+
+                var entries = spidByEditorId[eid].Entries;
+                if (!entries.Exists(e => string.Equals(e.Rule.SourceFile, rule.SourceFile, StringComparison.OrdinalIgnoreCase)))
+                    entries.Add((rule, npcRef.Identifier));
+            }
+        }
+
+        // Merge.
+        foreach (var (eid, (npcRef, spidEntries)) in spidByEditorId)
+        {
+            spByEditorId.TryGetValue(eid, out var spRules);
+
+            if (conflictByEditorId.TryGetValue(eid, out var existing))
+            {
+                foreach (var (r, identifier) in spidEntries)
+                    existing.Sources.Add(ToConflictSource(r, identifier));
+            }
+            else
+            {
+                var totalSources = (spRules?.Count ?? 0) + spidEntries.Count;
+                if (totalSources < 2) continue;
+
+                var newEntry = new ConflictEntry
+                {
+                    NpcRef           = npcRef,
+                    ResolvedEditorId = eid,
+                };
+
+                if (spRules != null)
+                    foreach (var r in spRules)
+                        newEntry.Sources.Add(ToConflictSource(r));
+
+                foreach (var (r, identifier) in spidEntries)
+                    newEntry.Sources.Add(ToConflictSource(r, identifier));
+
+                summary.OutfitDefaultConflicts.Add(newEntry);
+            }
+        }
+    }
+
+    private static ConflictSource ToConflictSource(SkyPatcherRule rule, string? spidNpcIdentifier = null) => new()
+    {
+        FilePath           = rule.SourceFile,
+        LineNumber         = rule.LineNumber,
+        PrecedingLine      = rule.PrecedingLine,
+        ConflictLine       = rule.LineText,
+        FollowingLine      = rule.FollowingLine,
+        RuleValue          = rule.RuleValue,
+        SourceTool         = rule.SourceTool,
+        SpidChance         = rule.SpidChance,
+        SpidNpcIdentifier  = spidNpcIdentifier
+    };
 
     private static IEnumerable<ConflictEntry> AllEntries(ConflictSummary s) =>
         s.AppearanceConflicts.Concat(s.SkinConflicts).Concat(s.OutfitDefaultConflicts);
@@ -420,6 +552,13 @@ public partial class MainWindow : Window
     {
         try
         {
+            // When launched through MO2 (including Stock Game setups), MO2 sets the working
+            // directory to the managed game folder. Check that first so Stock Game users don't
+            // need to configure the path manually.
+            var cwd = Directory.GetCurrentDirectory();
+            if (IsSkyrimDirectory(cwd))
+                return cwd;
+
             // (subkey under HKLM, value name)
             var candidates = new[]
             {
@@ -445,5 +584,13 @@ public partial class MainWindow : Window
         catch { }
 
         return null;
+    }
+
+    private static bool IsSkyrimDirectory(string path)
+    {
+        if (!Directory.Exists(path)) return false;
+        return File.Exists(Path.Combine(path, "SkyrimSE.exe"))
+            || File.Exists(Path.Combine(path, "TESV.exe"))
+            || File.Exists(Path.Combine(path, "SkyrimVR.exe"));
     }
 }
