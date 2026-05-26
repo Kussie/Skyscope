@@ -152,7 +152,7 @@
                                                 <TextBlock Text="{Binding FileName}"
                                                            FontSize="12" FontWeight="SemiBold" Foreground="#ECEFF4"/>
                                                 <TextBlock Text="{Binding FilePath}"
-                                                           FontSize="9" Foreground="#4C566A"
+                                                           FontSize="9" Foreground="#6C7A8A"
                                                            TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                             </StackPanel>
 
