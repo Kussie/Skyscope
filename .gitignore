@@ -6,3 +6,4 @@ bin/
 .claude/
 repo.json
 publish/
+publish_test/
