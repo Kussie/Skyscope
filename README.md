@@ -12,7 +12,7 @@ A small tool for finding SkyPatcher conflicts. If you have multiple NPC overhaul
 ## Requirements
 
 - Windows
-- [.NET 6.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/6.0)
+- [.NET 10.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 ## Installation
 

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms;
+using FolderBrowserDialog = System.Windows.Forms.FolderBrowserDialog;
 using System.Windows.Input;
 using Microsoft.Win32;
 using SkyScope.Core;

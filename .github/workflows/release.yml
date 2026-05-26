@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Build
         run: dotnet build --configuration Release
@@ -28,13 +28,13 @@ jobs:
 
       - name: Generate version tag
         id: version
-        shell: bash
+        shell: pwsh
         run: |
-          PREFIX=$(date +'%Y%m')
+          $prefix = Get-Date -Format 'yyyyMM'
           git fetch --tags
-          COUNT=$(git tag -l | grep -E '^[0-9]{6}\.[0-9]+$' | wc -l)
-          NEXT=$((COUNT + 1))
-          echo "tag=${PREFIX}.${NEXT}" >> $GITHUB_OUTPUT
+          $count = @(git tag -l | Where-Object { $_ -match '^\d{6}\.\d+$' }).Count
+          $next  = $count + 1
+          "tag=$prefix.$next" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Tag release
         shell: bash
