@@ -58,7 +58,7 @@ jobs:
           files: SkyScope-${{ steps.version.outputs.tag }}.zip
 
       - name: Publish to Nexus Mods
-        uses: Nexus-Mods/upload-action
+        uses: Nexus-Mods/upload-action@main
         with:
           api_key: ${{ secrets.NEXUS_API_KEY }}
           file_group_id: ${{ secrets.NEXUS_GROUP_ID }}
