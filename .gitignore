@@ -5,3 +5,4 @@ bin/
 .idea/
 .claude/
 repo.json
+publish/

@@ -13,12 +13,11 @@ A small tool for finding SkyPatcher conflicts. If you have multiple NPC overhaul
 
 ## Requirements
 
-- Windows
-- [.NET 10.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Windows 10 or later
 
 ## Installation
 
-Download the latest release, extract it somewhere, run `SkyScope.UI.exe`.
+Download the latest release, extract it somewhere, run `SkyScope.exe`.
 
 ## Usage
 
@@ -34,7 +33,7 @@ Once results are in, hover any row for a quick summary or double-click to open t
 
 **Manual installs and Vortex** work out of the box. Vortex deploys mod files directly into your Data folder so SkyScope sees them the same as a manual install.
 
-**MO2 is a bit different.** MO2's virtual filesystem only exists while something is running through MO2, so if you launch SkyScope normally it won't see any of your mod files. The easiest fix is to add SkyScope as an executable inside MO2 — go to Tools → Executables, click Add from file, and point it at `SkyScope.UI.exe`. Launch it from the MO2 toolbar and the VFS kicks in automatically.
+**MO2 is a bit different.** MO2's virtual filesystem only exists while something is running through MO2, so if you launch SkyScope normally it won't see any of your mod files. The easiest fix is to add SkyScope as an executable inside MO2 — go to Tools → Executables, click Add from file, and point it at `SkyScope.exe`. Launch it from the MO2 toolbar and the VFS kicks in automatically.
 
 ---
 
