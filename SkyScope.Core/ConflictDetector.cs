@@ -38,20 +38,15 @@ public class ConflictDetector
                         map[key] = entry;
                     }
 
-                    // One source entry per file — capture the first rule seen from that file
-                    if (!entry.Sources.Exists(s =>
-                            string.Equals(s.FilePath, rule.SourceFile, StringComparison.OrdinalIgnoreCase)))
+                    entry.Sources.Add(new ConflictSource
                     {
-                        entry.Sources.Add(new ConflictSource
-                        {
-                            FilePath      = rule.SourceFile,
-                            LineNumber    = rule.LineNumber,
-                            PrecedingLine = rule.PrecedingLine,
-                            ConflictLine  = rule.LineText,
-                            FollowingLine = rule.FollowingLine,
-                            RuleValue     = rule.RuleValue
-                        });
-                    }
+                        FilePath      = rule.SourceFile,
+                        LineNumber    = rule.LineNumber,
+                        PrecedingLine = rule.PrecedingLine,
+                        ConflictLine  = rule.LineText,
+                        FollowingLine = rule.FollowingLine,
+                        RuleValue     = rule.RuleValue
+                    });
                 }
             }
         }

@@ -199,7 +199,10 @@ public class SkyPatcherConfigParser
         if (refType == NpcRefType.RecordId)
         {
             var pipeIdx = npcStr.IndexOf('|');
-            if (pipeIdx < 0) return null;
+
+            // filterByNpcs accepts either Plugin|FormId or a bare EditorId
+            if (pipeIdx < 0)
+                return new NpcReference { RefType = NpcRefType.EditorId, Identifier = npcStr };
 
             return new NpcReference
             {

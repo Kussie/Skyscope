@@ -35,17 +35,23 @@ public partial class ConflictDetailWindow : Window
             _                      => ruleType.ToString()
         };
 
-        var sorted     = entry.Sources
+        // SkyPatcher load order: alphabetical by full path, then by line number within the same file.
+        // The last entry in this sorted list is the rule that actually takes effect.
+        var sorted = entry.Sources
             .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.LineNumber)
             .ToList();
-        var winnerPath = sorted.Count > 0 ? sorted[sorted.Count - 1].FilePath : string.Empty;
+        var winner = sorted.Count > 0 ? sorted[sorted.Count - 1] : null;
 
         _sources = sorted.Select((src, idx) => new SourceViewModel
         {
             FileName     = Path.GetFileName(src.FilePath),
             FilePath     = src.FilePath,
+            LineNumber   = src.LineNumber,
             RuleValue    = src.RuleValue,
-            IsWinner     = string.Equals(src.FilePath, winnerPath, StringComparison.OrdinalIgnoreCase),
+            IsWinner     = winner != null &&
+                           string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
+                           src.LineNumber == winner.LineNumber,
             LoadPosition = idx + 1,
             TotalSources = sorted.Count,
             Lines             = BuildLineItems(src),
@@ -78,7 +84,8 @@ public partial class ConflictDetailWindow : Window
         if (btn.Tag is not SourceViewModel winner) return;
 
         var toComment = _sources
-            .Where(s => !string.Equals(s.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase))
+            .Where(s => !(string.Equals(s.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase)
+                          && s.LineNumber == winner.LineNumber))
             .ToList();
 
         var errors   = new List<string>();
@@ -237,6 +244,7 @@ public class SourceViewModel
 {
     public string         FileName     { get; init; } = string.Empty;
     public string         FilePath     { get; init; } = string.Empty;
+    public int            LineNumber   { get; init; }
     public string         RuleValue    { get; init; } = string.Empty;
     public bool           IsWinner     { get; init; }
     public int            LoadPosition { get; init; }
