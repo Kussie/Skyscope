@@ -2,11 +2,43 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SkyScope.Models;
 
 namespace SkyScope.UI;
 
 public static class ConflictResolutionHelper
 {
+    // Returns a filtered copy of entries, removing SPID sources with SpidChance < 100 when
+    // showLowChance is false. Entries that no longer have 2+ distinct-value sources are dropped.
+    public static List<ConflictEntry> FilterLowChanceSpid(List<ConflictEntry> entries, bool showLowChance)
+    {
+        if (showLowChance) return entries;
+
+        var result = new List<ConflictEntry>(entries.Count);
+        foreach (var entry in entries)
+        {
+            var filtered = entry.Sources
+                .Where(s => !(s.SourceTool == "SPID" && s.SpidChance.HasValue && s.SpidChance.Value < 100))
+                .ToList();
+
+            if (filtered.Count < 2) continue;
+
+            var first = filtered[0].RuleValue;
+            if (filtered.All(s => string.Equals(s.RuleValue, first, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            var copy = new ConflictEntry
+            {
+                NpcRef           = entry.NpcRef,
+                ResolvedName     = entry.ResolvedName,
+                ResolvedEditorId = entry.ResolvedEditorId
+            };
+            copy.Sources.AddRange(filtered);
+            result.Add(copy);
+        }
+        return result;
+    }
+
     public static void CommentOutLine(string filePath, int lineNumber, string capturedText)
     {
         var lines = File.ReadAllLines(filePath);

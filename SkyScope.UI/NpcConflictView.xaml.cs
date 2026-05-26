@@ -15,6 +15,7 @@ namespace SkyScope.UI;
 public partial class NpcConflictView : UserControl
 {
     private List<NpcConflictViewModel> _allNpcs = new();
+    private ConflictSummary? _lastSummary;
     private bool _filterA = true;
     private bool _filterS = true;
     private bool _filterO = true;
@@ -26,14 +27,17 @@ public partial class NpcConflictView : UserControl
 
     public void Populate(ConflictSummary summary)
     {
+        _lastSummary = summary;
+
         foreach (var vm in _allNpcs)
             vm.IsExpanded = false;
 
+        var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
         var dict = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
 
-        AddGroups(dict, summary.AppearanceConflicts,    RuleType.Appearance,    "Appearance",     HexBrush("#EBCB8B"));
-        AddGroups(dict, summary.SkinConflicts,          RuleType.Skin,          "Skin",           HexBrush("#D08770"));
-        AddGroups(dict, summary.OutfitDefaultConflicts, RuleType.OutfitDefault, "Default Outfit", HexBrush("#B48EAD"));
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush("#EBCB8B"));
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush("#D08770"));
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush("#B48EAD"));
 
         foreach (var vm in dict.Values)
         {
@@ -210,6 +214,12 @@ public partial class NpcConflictView : UserControl
         _filterO = !_filterO;
         UpdateFilterBtn(FilterOButton, _filterO, "#B48EAD");
         ApplyFilter();
+    }
+
+    private void SpidFilter_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_lastSummary is null) return;
+        Populate(_lastSummary);
     }
 
     private static void UpdateFilterBtn(Button btn, bool active, string activeHex)

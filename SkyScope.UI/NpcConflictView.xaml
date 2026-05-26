@@ -39,6 +39,31 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="FilterToggleStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#8C9BB5"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Bd" Background="#4C566A" CornerRadius="3" Padding="8,4">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#5E81AC"/>
+                                <Setter Property="Foreground" Value="#ECEFF4"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#5A6478"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="NpcHeaderButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -75,6 +100,7 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -130,9 +156,19 @@
                             Style="{StaticResource NpcTabPrimaryButton}"/>
                 </StackPanel>
 
+                <!-- Sub-100% SPID filter -->
+                <CheckBox x:Name="ShowLowChanceSpidCheckBox" Grid.Column="2"
+                          Content="Show &lt;100% SPID Conflicts"
+                          Style="{StaticResource FilterToggleStyle}"
+                          Margin="0,0,8,0"
+                          VerticalAlignment="Center"
+                          Checked="SpidFilter_Changed"
+                          Unchecked="SpidFilter_Changed"
+                          ToolTip="When checked, also shows SPID conflicts where the rule has less than 100% chance"/>
+
                 <!-- NPC count -->
-                <TextBlock x:Name="NpcCountText" Grid.Column="2"
-                           FontSize="10" Foreground="#4C566A"
+                <TextBlock x:Name="NpcCountText" Grid.Column="3"
+                           FontSize="10" Foreground="#8C9BB5"
                            VerticalAlignment="Center" Margin="0,0,2,0"/>
             </Grid>
         </Border>

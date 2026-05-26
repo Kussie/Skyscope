@@ -349,16 +349,17 @@ public partial class MainWindow : Window
 
     private void DisplayResults(ConflictSummary summary)
     {
-        var filter = FilterTextBox.Text.Trim();
+        var filter        = FilterTextBox.Text.Trim();
+        var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
 
         FilesScannedText.Text    = summary.TotalFilesScanned.ToString();
         AppearanceCountText.Text = summary.AppearanceConflicts.Count.ToString();
         SkinCountText.Text       = summary.SkinConflicts.Count.ToString();
         OutfitCountText.Text     = summary.OutfitDefaultConflicts.Count.ToString();
 
-        var appearance = FilterEntries(summary.AppearanceConflicts, filter);
-        var skin       = FilterEntries(summary.SkinConflicts, filter);
-        var outfit     = FilterEntries(summary.OutfitDefaultConflicts, filter);
+        var appearance = FilterEntries(ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts, showLowChance), filter);
+        var skin       = FilterEntries(ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,       showLowChance), filter);
+        var outfit     = FilterEntries(ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), filter);
 
         PopulateGrid(AppearanceDataGrid, AppearanceEmptyText, AppearanceBadge, AppearanceBadgeText,
                      appearance, RuleType.Appearance);
@@ -385,6 +386,12 @@ public partial class MainWindow : Window
     }
 
     private void FilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_lastSummary is null) return;
+        DisplayResults(_lastSummary);
+    }
+
+    private void SpidFilter_Changed(object sender, RoutedEventArgs e)
     {
         if (_lastSummary is null) return;
         DisplayResults(_lastSummary);

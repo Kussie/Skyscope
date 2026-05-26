@@ -219,6 +219,31 @@
             </Setter>
         </Style>
 
+        <Style x:Key="FilterToggleStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#8C9BB5"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Bd" Background="#4C566A" CornerRadius="3" Padding="8,4">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#5E81AC"/>
+                                <Setter Property="Foreground" Value="#ECEFF4"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#5A6478"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="NordTabControl" TargetType="TabControl">
             <Setter Property="Background" Value="#2E3440"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -373,36 +398,50 @@
                 <!-- Filter bar -->
                 <Border Grid.Row="0" Background="#313744" CornerRadius="4" Margin="0,0,0,8">
                     <Grid>
-                        <TextBox x:Name="FilterTextBox"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="#ECEFF4" CaretBrush="#ECEFF4"
-                                 FontSize="11" Height="32" VerticalContentAlignment="Center"
-                                 Padding="30,0,8,0"
-                                 TextChanged="FilterTextBox_TextChanged"/>
-                        <TextBlock Text="No results match the current filter."
-                                   x:Name="FilterNoMatchText"
-                                   FontSize="10" Foreground="#4C566A"
-                                   VerticalAlignment="Center" HorizontalAlignment="Right"
-                                   Margin="0,0,10,0" IsHitTestVisible="False"
-                                   Visibility="Collapsed"/>
-                        <TextBlock Text="Filter results…"
-                                   FontSize="11" Foreground="#4C566A"
-                                   VerticalAlignment="Center" Margin="30,0,0,0"
-                                   IsHitTestVisible="False">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Text, ElementName=FilterTextBox}" Value="">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock Text="⌕" FontSize="15" Foreground="#4C566A"
-                                   VerticalAlignment="Center" Margin="8,0,0,0"
-                                   IsHitTestVisible="False"/>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0">
+                            <TextBox x:Name="FilterTextBox"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#ECEFF4" CaretBrush="#ECEFF4"
+                                     FontSize="11" Height="32" VerticalContentAlignment="Center"
+                                     Padding="30,0,8,0"
+                                     TextChanged="FilterTextBox_TextChanged"/>
+                            <TextBlock Text="No results match the current filter."
+                                       x:Name="FilterNoMatchText"
+                                       FontSize="10" Foreground="#4C566A"
+                                       VerticalAlignment="Center" HorizontalAlignment="Right"
+                                       Margin="0,0,10,0" IsHitTestVisible="False"
+                                       Visibility="Collapsed"/>
+                            <TextBlock Text="Filter results…"
+                                       FontSize="11" Foreground="#4C566A"
+                                       VerticalAlignment="Center" Margin="30,0,0,0"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=FilterTextBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="⌕" FontSize="15" Foreground="#4C566A"
+                                       VerticalAlignment="Center" Margin="8,0,0,0"
+                                       IsHitTestVisible="False"/>
+                        </Grid>
+                        <CheckBox x:Name="ShowLowChanceSpidCheckBox" Grid.Column="1"
+                                  Content="Show &lt;100% SPID Conflicts"
+                                  Style="{StaticResource FilterToggleStyle}"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center"
+                                  Checked="SpidFilter_Changed"
+                                  Unchecked="SpidFilter_Changed"
+                                  ToolTip="When checked, also shows SPID conflicts where the rule has less than 100% chance"/>
                     </Grid>
                 </Border>
 
