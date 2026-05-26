@@ -275,9 +275,17 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    // Reject names that can't be resolved to a known NPC
+                    // SPID StringFilters match against both display names and EditorIds.
+                    // Try exact name first; if that fails, check whether the string is itself
+                    // a valid NPC EditorId (e.g. "Yngvar" for "Yngvar the Singer").
                     eid = db.FindEditorIdByName(npcRef.Identifier);
-                    if (eid == null) continue;
+                    if (eid == null)
+                    {
+                        if (db.IsNpcEditorId(npcRef.Identifier))
+                            eid = npcRef.Identifier;
+                        else
+                            continue;
+                    }
                 }
 
                 if (!spidByEditorId.TryGetValue(eid, out var entry))
