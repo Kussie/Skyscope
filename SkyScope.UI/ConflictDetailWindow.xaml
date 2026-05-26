@@ -179,7 +179,7 @@
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Border.Style>
-                                                    <TextBlock Text="▶  wins" FontSize="9"
+                                                    <TextBlock Text="▶  winning" FontSize="9"
                                                                FontWeight="SemiBold" Foreground="#A3BE8C"/>
                                                 </Border>
                                             </StackPanel>

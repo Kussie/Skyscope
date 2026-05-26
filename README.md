@@ -1,6 +1,8 @@
 # SkyScope
+![Logo](Data/logo.png)
 
-A small tool for finding SkyPatcher conflicts. If you have multiple NPC overhauls installed there's a decent chance some of them are fighting over the same NPCs through SkyPatcher config files — SkyScope scans those configs and tells you exactly which ones.
+
+A small tool for finding SkyPatcher conflicts. If you have multiple NPC overhauls installed there's a decent chance some of them are fighting over the same NPCs through SkyPatcher config files. SkyScope scans those configs and tells you exactly which ones are winning the conflict and allows you to select which you want to win instead by commenting out the other conflicts.
 
 ## What it does
 
@@ -55,16 +57,6 @@ SkyPatcher has three rule types that SkyScope checks for conflicts:
 In all cases, when two or more mods target the same NPC with the same rule type, the file that sorts last alphabetically by its full path wins. SkyScope shows you the load position of each file in the detail view.
 
 ---
-
-## Building from source
-
-Requires the .NET 6 SDK.
-
-```bash
-dotnet restore
-dotnet build
-dotnet run --project SkyScope.UI/SkyScope.UI.csproj
-```
 
 ## Contributing
 

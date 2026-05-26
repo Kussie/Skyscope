@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -85,8 +86,19 @@ public class ConflictEntry
     public string? ResolvedName     { get; set; }
     public string? ResolvedEditorId { get; set; }
 
-    // Prefers EditorId; falls back to Plugin|FormId or raw Identifier
-    public string DisplayName => ResolvedEditorId ?? NpcRef.DisplayText;
+    public string DisplayName
+    {
+        get
+        {
+            var primary = ResolvedEditorId ?? NpcRef.DisplayText;
+            // Only append the full name when it differs from the EditorId — for localised plugins
+            // (e.g. Skyrim.esm) ResolveName falls back to the EditorId, so they'd be identical.
+            if (!string.IsNullOrEmpty(ResolvedName) &&
+                !string.Equals(ResolvedName, primary, StringComparison.OrdinalIgnoreCase))
+                return $"{primary} ({ResolvedName})";
+            return primary;
+        }
+    }
 }
 
 public class ConflictSummary

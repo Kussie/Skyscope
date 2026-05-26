@@ -41,11 +41,12 @@ public class ConflictDisplayItem
         sb.AppendLine("NPC Identifier");
         sb.AppendLine(new string('─', 36));
 
-        if (!string.IsNullOrEmpty(entry.ResolvedName))
-            sb.AppendLine($"  Name:       {entry.ResolvedName}");
-
         if (!string.IsNullOrEmpty(entry.ResolvedEditorId))
             sb.AppendLine($"  Editor ID:  {entry.ResolvedEditorId}");
+
+        if (!string.IsNullOrEmpty(entry.ResolvedName) &&
+            !string.Equals(entry.ResolvedName, entry.ResolvedEditorId, StringComparison.OrdinalIgnoreCase))
+            sb.AppendLine($"  Name:       {entry.ResolvedName}");
 
         if (npc.RefType == NpcRefType.RecordId)
         {
@@ -207,22 +208,45 @@ public partial class MainWindow : Window
 
     private void DisplayResults(ConflictSummary summary)
     {
+        var filter = FilterTextBox.Text.Trim();
+
         FilesScannedText.Text    = summary.TotalFilesScanned.ToString();
         AppearanceCountText.Text = summary.AppearanceConflicts.Count.ToString();
         SkinCountText.Text       = summary.SkinConflicts.Count.ToString();
         OutfitCountText.Text     = summary.OutfitDefaultConflicts.Count.ToString();
 
-        PopulateGrid(AppearanceDataGrid, AppearanceEmptyText, AppearanceBadge, AppearanceBadgeText,
-                     summary.AppearanceConflicts, RuleType.Appearance);
-        PopulateGrid(SkinDataGrid,       SkinEmptyText,       SkinBadge,       SkinBadgeText,
-                     summary.SkinConflicts,        RuleType.Skin);
-        PopulateGrid(OutfitDataGrid,     OutfitEmptyText,     OutfitBadge,     OutfitBadgeText,
-                     summary.OutfitDefaultConflicts, RuleType.OutfitDefault);
+        var appearance = FilterEntries(summary.AppearanceConflicts, filter);
+        var skin       = FilterEntries(summary.SkinConflicts, filter);
+        var outfit     = FilterEntries(summary.OutfitDefaultConflicts, filter);
 
-        UpdateRowHeights(
-            summary.AppearanceConflicts.Count > 0,
-            summary.SkinConflicts.Count > 0,
-            summary.OutfitDefaultConflicts.Count > 0);
+        PopulateGrid(AppearanceDataGrid, AppearanceEmptyText, AppearanceBadge, AppearanceBadgeText,
+                     appearance, RuleType.Appearance);
+        PopulateGrid(SkinDataGrid,       SkinEmptyText,       SkinBadge,       SkinBadgeText,
+                     skin,        RuleType.Skin);
+        PopulateGrid(OutfitDataGrid,     OutfitEmptyText,     OutfitBadge,     OutfitBadgeText,
+                     outfit, RuleType.OutfitDefault);
+
+        UpdateRowHeights(appearance.Count > 0, skin.Count > 0, outfit.Count > 0);
+
+        FilterNoMatchText.Visibility =
+            !string.IsNullOrEmpty(filter) && appearance.Count == 0 && skin.Count == 0 && outfit.Count == 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+    }
+
+    private static List<ConflictEntry> FilterEntries(List<ConflictEntry> entries, string filter)
+    {
+        if (string.IsNullOrEmpty(filter)) return entries;
+        return entries
+            .Where(e => e.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                     || e.NpcRef.DisplayText.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private void FilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_lastSummary is null) return;
+        DisplayResults(_lastSummary);
     }
 
     private static void PopulateGrid(
