@@ -185,6 +185,7 @@ public partial class MainWindow : Window
 
             _lastSummary = summary;
             DisplayResults(summary);
+            NpcConflictViewControl.Populate(summary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0;
 
             var spidSuffix = spidFileCount > 0 ? $"  SPID: {spidFileCount} file(s), {spidRules.Count} outfit rule(s)." : string.Empty;
@@ -439,6 +440,7 @@ public partial class MainWindow : Window
         OutfitRow.Height     = star;
 
         ExportReportButton.IsEnabled = false;
+        NpcConflictViewControl.Clear();
         _lastSummary = null;
     }
 

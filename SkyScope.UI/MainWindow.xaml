@@ -1,6 +1,7 @@
 <Window x:Class="SkyScope.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SkyScope.UI"
         Title="SkyScope - SkyPatcher Conflict Detector"
         Height="750" Width="1100"
         WindowStartupLocation="CenterScreen"
@@ -218,6 +219,48 @@
             </Setter>
         </Style>
 
+        <Style x:Key="NordTabControl" TargetType="TabControl">
+            <Setter Property="Background" Value="#2E3440"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style x:Key="NordTabItem" TargetType="TabItem">
+            <Setter Property="Background" Value="#2E3440"/>
+            <Setter Property="Foreground" Value="#8C9BB5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8,16,10"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Grid>
+                            <Border x:Name="Tab" Background="{TemplateBinding Background}"
+                                    Padding="{TemplateBinding Padding}" Cursor="Hand">
+                                <ContentPresenter ContentSource="Header"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <Rectangle x:Name="Indicator" Height="2"
+                                       VerticalAlignment="Bottom" Fill="#88C0D0"
+                                       Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Tab" Property="Background" Value="#3B4252"/>
+                                <Setter Property="Foreground" Value="#ECEFF4"/>
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Tab" Property="Background" Value="#353D4C"/>
+                                <Setter Property="Foreground" Value="#B0BFCF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid>
@@ -259,8 +302,12 @@
             </Grid>
         </Border>
 
-        <!-- Main content -->
-        <Grid Grid.Row="1" Margin="16">
+        <!-- Tabbed main content -->
+        <TabControl Grid.Row="1" Style="{StaticResource NordTabControl}"
+                    ItemContainerStyle="{StaticResource NordTabItem}">
+
+            <TabItem Header="Conflicts">
+            <Grid Margin="16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220"/>
                 <ColumnDefinition Width="*"/>
@@ -504,7 +551,16 @@
                 </Border>
 
             </Grid>
-        </Grid>
+            </Grid>
+            </TabItem>
+
+            <TabItem Header="By NPC">
+                <Grid Margin="16">
+                    <local:NpcConflictView x:Name="NpcConflictViewControl"/>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
 
         <!-- Footer -->
         <Border Grid.Row="2" Background="#242933" Padding="16,8">
