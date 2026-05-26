@@ -152,7 +152,7 @@ public partial class MainWindow : Window
 
             if (configs.Count == 0)
             {
-                StatusTextBlock.Text = "No SkyPatcher INI files found.";
+                StatusTextBlock.Text = $"No SkyPatcher rule files found under {skyrimPath}. Check that SkyPatcher is installed and the game path is correct.";
                 ClearResults();
                 return;
             }
