@@ -297,41 +297,17 @@
 
         <!-- Header -->
         <Border Grid.Row="0" Background="#242933" Padding="20,14">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="SkyScope" FontSize="22" FontWeight="Bold" Foreground="#ECEFF4"/>
-                    <TextBlock Text="SkyPatcher NPC Overhaul Conflict Detector" FontSize="11" Foreground="#88C0D0" Margin="0,3,0,0"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <StackPanel Margin="0,0,20,0" HorizontalAlignment="Center">
-                        <TextBlock Text="FILES SCANNED" FontSize="9" Foreground="#4C566A" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="FilesScannedText" Text="—" FontSize="20" FontWeight="Bold" Foreground="#81A1C1" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,0,20,0" HorizontalAlignment="Center">
-                        <TextBlock Text="APPEARANCE" FontSize="9" Foreground="#4C566A" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="AppearanceCountText" Text="—" FontSize="20" FontWeight="Bold" Foreground="#EBCB8B" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,0,20,0" HorizontalAlignment="Center">
-                        <TextBlock Text="SKIN" FontSize="9" Foreground="#4C566A" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="SkinCountText" Text="—" FontSize="20" FontWeight="Bold" Foreground="#D08770" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                    <StackPanel HorizontalAlignment="Center">
-                        <TextBlock Text="OUTFIT" FontSize="9" Foreground="#4C566A" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="OutfitCountText" Text="—" FontSize="20" FontWeight="Bold" Foreground="#B48EAD" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                </StackPanel>
-            </Grid>
+            <StackPanel>
+                <TextBlock Text="SkyScope" FontSize="22" FontWeight="Bold" Foreground="#ECEFF4"/>
+                <TextBlock Text="SkyPatcher NPC Overhaul Conflict Detector" FontSize="11" Foreground="#88C0D0" Margin="0,3,0,0"/>
+            </StackPanel>
         </Border>
 
         <!-- Tabbed main content -->
         <TabControl Grid.Row="1" Style="{StaticResource NordTabControl}"
                     ItemContainerStyle="{StaticResource NordTabItem}">
 
-            <TabItem Header="Conflicts">
+            <TabItem Header="Report">
             <Grid Margin="16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220"/>
@@ -344,7 +320,7 @@
                     <TextBlock Text="Configuration" FontSize="12" FontWeight="Bold" Foreground="#ECEFF4" Margin="0,0,0,12"/>
 
                     <TextBlock Text="Skyrim Directory" FontSize="10" Foreground="#88C0D0" Margin="0,0,0,4"/>
-                    <TextBlock Text="Scans Data\SKSE\Plugins\SkyPatcher\npc and \outfit recursively."
+                    <TextBlock Text="Scans Data\SKSE\Plugins\SkyPatcher\npc and \outfit recursively, plus Data\*_DISTR.ini for SPID rules."
                                FontSize="9" Foreground="#4C566A" TextWrapping="Wrap" Margin="0,0,0,8"/>
 
                     <Grid Margin="0,0,0,4">
@@ -384,216 +360,118 @@
                 </StackPanel>
             </Border>
 
-            <!-- Three resizable conflict sections -->
-            <Grid x:Name="ResultsGrid" Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition x:Name="AppearanceRow" Height="*" MinHeight="62"/>
-                    <RowDefinition Height="8"/>
-                    <RowDefinition x:Name="SkinRow"       Height="*" MinHeight="62"/>
-                    <RowDefinition Height="8"/>
-                    <RowDefinition x:Name="OutfitRow"     Height="*" MinHeight="62"/>
-                </Grid.RowDefinitions>
+            <!-- Report summary panel -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
 
-                <!-- Filter bar -->
-                <Border Grid.Row="0" Background="#313744" CornerRadius="4" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid Grid.Column="0">
-                            <TextBox x:Name="FilterTextBox"
-                                     Background="Transparent" BorderThickness="0"
-                                     Foreground="#ECEFF4" CaretBrush="#ECEFF4"
-                                     FontSize="11" Height="32" VerticalContentAlignment="Center"
-                                     Padding="30,0,8,0"
-                                     TextChanged="FilterTextBox_TextChanged"/>
-                            <TextBlock Text="No results match the current filter."
-                                       x:Name="FilterNoMatchText"
-                                       FontSize="10" Foreground="#4C566A"
-                                       VerticalAlignment="Center" HorizontalAlignment="Right"
-                                       Margin="0,0,10,0" IsHitTestVisible="False"
-                                       Visibility="Collapsed"/>
-                            <TextBlock Text="Filter results…"
-                                       FontSize="11" Foreground="#4C566A"
-                                       VerticalAlignment="Center" Margin="30,0,0,0"
-                                       IsHitTestVisible="False">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Text, ElementName=FilterTextBox}" Value="">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Text="⌕" FontSize="15" Foreground="#4C566A"
-                                       VerticalAlignment="Center" Margin="8,0,0,0"
-                                       IsHitTestVisible="False"/>
-                        </Grid>
-                        <CheckBox x:Name="ShowLowChanceSpidCheckBox" Grid.Column="1"
-                                  Content="Show &lt;100% SPID Conflicts"
-                                  Style="{StaticResource FilterToggleStyle}"
-                                  Margin="0,0,8,0"
-                                  VerticalAlignment="Center"
-                                  Checked="SpidFilter_Changed"
-                                  Unchecked="SpidFilter_Changed"
-                                  ToolTip="When checked, also shows SPID conflicts where the rule has less than 100% chance"/>
-                    </Grid>
-                </Border>
+                    <!-- Placeholder shown before first analysis -->
+                    <TextBlock x:Name="ReportPlaceholderText"
+                               Text="Run an analysis to see a conflict summary."
+                               FontSize="12" Foreground="#4C566A"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Margin="0,40,0,0"/>
 
-                <!-- Appearance conflicts -->
-                <Border Grid.Row="1" Style="{StaticResource CardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <StackPanel Grid.Row="0" Orientation="Horizontal">
-                            <TextBlock Text="Appearance Conflicts  (copyVisualStyle)" Style="{StaticResource SectionHeaderStyle}"/>
-                            <Border x:Name="AppearanceBadge" Style="{StaticResource ConflictBadgeStyle}" Visibility="Collapsed">
-                                <TextBlock x:Name="AppearanceBadgeText" FontSize="10" FontWeight="Bold" Foreground="White"/>
-                            </Border>
-                        </StackPanel>
-                        <TextBlock x:Name="AppearanceEmptyText" Grid.Row="1"
-                                   Text="No appearance conflicts detected."
-                                   FontSize="10" Foreground="#4C566A"
-                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        <DataGrid x:Name="AppearanceDataGrid" Grid.Row="1"
-                                  AutoGenerateColumns="False" IsReadOnly="True"
-                                  GridLinesVisibility="None" HeadersVisibility="Column"
-                                  BorderThickness="0" Background="Transparent"
-                                  SelectionMode="Single" SelectionUnit="FullRow"
-                                  RowHeight="38" CanUserSortColumns="True"
-                                  ColumnHeaderStyle="{StaticResource GridHeaderStyle}"
-                                  CellStyle="{StaticResource GridCellStyle}"
-                                  Visibility="Collapsed"
-                                  ScrollViewer.CanContentScroll="True"
-                                  CanUserResizeRows="False" CanUserReorderColumns="False"
-                                  MouseDoubleClick="DataGrid_MouseDoubleClick">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="NPC"    Binding="{Binding DisplayName}"    Width="*"   ElementStyle="{StaticResource CellTextStyle}"/>
-                                <DataGridTextColumn Header="Winner" Binding="{Binding WinnerFileName}" Width="170" ElementStyle="{StaticResource WinnerCellStyle}"/>
-                                <DataGridTextColumn Header="Conflicts"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
-                            </DataGrid.Columns>
-                            <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow" BasedOn="{StaticResource GridRowStyle}">
-                                    <Setter Property="ToolTip" Value="{Binding ToolTipText}"/>
-                                    <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
-                                </Style>
-                            </DataGrid.RowStyle>
-                        </DataGrid>
-                    </Grid>
-                </Border>
+                    <!-- Summary panels — hidden until analysis completes -->
+                    <StackPanel x:Name="ReportSummaryPanel" Visibility="Collapsed">
 
-                <!-- Splitter 1 -->
-                <GridSplitter Grid.Row="2" Height="8"
-                              Style="{StaticResource SplitterStyle}"
-                              ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
-                              Cursor="SizeNS"/>
+                        <!-- Scan Summary -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Scan Summary" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="SkyPatcher files scanned" FontSize="11" Foreground="#88C0D0" Margin="0,3"/>
+                                    <TextBlock x:Name="SkyPatcherFilesText" Grid.Row="0" Grid.Column="1" Text="—" FontSize="11" Foreground="#ECEFF4" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="SPID files scanned" FontSize="11" Foreground="#88C0D0" Margin="0,3"/>
+                                    <TextBlock x:Name="SpidFilesText" Grid.Row="1" Grid.Column="1" Text="—" FontSize="11" Foreground="#ECEFF4" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="NPC database records" FontSize="11" Foreground="#88C0D0" Margin="0,3"/>
+                                    <TextBlock x:Name="NpcDbRecordsText" Grid.Row="2" Grid.Column="1" Text="—" FontSize="11" Foreground="#ECEFF4" FontWeight="Bold" Margin="0,3"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
-                <!-- Skin conflicts -->
-                <Border Grid.Row="3" Style="{StaticResource CardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <StackPanel Grid.Row="0" Orientation="Horizontal">
-                            <TextBlock Text="Skin Conflicts  (skin)" Style="{StaticResource SectionHeaderStyle}"/>
-                            <Border x:Name="SkinBadge" Style="{StaticResource ConflictBadgeStyle}" Visibility="Collapsed">
-                                <TextBlock x:Name="SkinBadgeText" FontSize="10" FontWeight="Bold" Foreground="White"/>
-                            </Border>
-                        </StackPanel>
-                        <TextBlock x:Name="SkinEmptyText" Grid.Row="1"
-                                   Text="No skin conflicts detected."
-                                   FontSize="10" Foreground="#4C566A"
-                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        <DataGrid x:Name="SkinDataGrid" Grid.Row="1"
-                                  AutoGenerateColumns="False" IsReadOnly="True"
-                                  GridLinesVisibility="None" HeadersVisibility="Column"
-                                  BorderThickness="0" Background="Transparent"
-                                  SelectionMode="Single" SelectionUnit="FullRow"
-                                  RowHeight="38" CanUserSortColumns="True"
-                                  ColumnHeaderStyle="{StaticResource GridHeaderStyle}"
-                                  CellStyle="{StaticResource GridCellStyle}"
-                                  Visibility="Collapsed"
-                                  ScrollViewer.CanContentScroll="True"
-                                  CanUserResizeRows="False" CanUserReorderColumns="False"
-                                  MouseDoubleClick="DataGrid_MouseDoubleClick">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="NPC"    Binding="{Binding DisplayName}"    Width="*"   ElementStyle="{StaticResource CellTextStyle}"/>
-                                <DataGridTextColumn Header="Winner" Binding="{Binding WinnerFileName}" Width="170" ElementStyle="{StaticResource WinnerCellStyle}"/>
-                                <DataGridTextColumn Header="Conflicts"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
-                            </DataGrid.Columns>
-                            <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow" BasedOn="{StaticResource GridRowStyle}">
-                                    <Setter Property="ToolTip" Value="{Binding ToolTipText}"/>
-                                    <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
-                                </Style>
-                            </DataGrid.RowStyle>
-                        </DataGrid>
-                    </Grid>
-                </Border>
+                        <!-- Conflicts Found -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Conflicts Found" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24"/>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
 
-                <!-- Splitter 2 -->
-                <GridSplitter Grid.Row="4" Height="8"
-                              Style="{StaticResource SplitterStyle}"
-                              ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
-                              Cursor="SizeNS"/>
+                                    <!-- Appearance -->
+                                    <Border Grid.Row="0" Grid.Column="0" Background="#EBCB8B" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Appearance" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="AppearanceSummaryText" Grid.Row="0" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
 
-                <!-- Default outfit conflicts -->
-                <Border Grid.Row="5" Style="{StaticResource CardStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <StackPanel Grid.Row="0" Orientation="Horizontal">
-                            <TextBlock Text="Default Outfit Conflicts  (outfitDefault)" Style="{StaticResource SectionHeaderStyle}"/>
-                            <Border x:Name="OutfitBadge" Style="{StaticResource ConflictBadgeStyle}" Visibility="Collapsed">
-                                <TextBlock x:Name="OutfitBadgeText" FontSize="10" FontWeight="Bold" Foreground="White"/>
-                            </Border>
-                        </StackPanel>
-                        <TextBlock x:Name="OutfitEmptyText" Grid.Row="1"
-                                   Text="No default outfit conflicts detected."
-                                   FontSize="10" Foreground="#4C566A"
-                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        <DataGrid x:Name="OutfitDataGrid" Grid.Row="1"
-                                  AutoGenerateColumns="False" IsReadOnly="True"
-                                  GridLinesVisibility="None" HeadersVisibility="Column"
-                                  BorderThickness="0" Background="Transparent"
-                                  SelectionMode="Single" SelectionUnit="FullRow"
-                                  RowHeight="38" CanUserSortColumns="True"
-                                  ColumnHeaderStyle="{StaticResource GridHeaderStyle}"
-                                  CellStyle="{StaticResource GridCellStyle}"
-                                  Visibility="Collapsed"
-                                  ScrollViewer.CanContentScroll="True"
-                                  CanUserResizeRows="False" CanUserReorderColumns="False"
-                                  MouseDoubleClick="DataGrid_MouseDoubleClick">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="NPC"    Binding="{Binding DisplayName}"    Width="*"   ElementStyle="{StaticResource CellTextStyle}"/>
-                                <DataGridTextColumn Header="Winner" Binding="{Binding WinnerFileName}" Width="170" ElementStyle="{StaticResource WinnerCellStyle}"/>
-                                <DataGridTextColumn Header="Conflicts"  Binding="{Binding FileCount}"      Width="54"  ElementStyle="{StaticResource CellTextStyle}"/>
-                            </DataGrid.Columns>
-                            <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow" BasedOn="{StaticResource GridRowStyle}">
-                                    <Setter Property="ToolTip" Value="{Binding ToolTipText}"/>
-                                    <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
-                                </Style>
-                            </DataGrid.RowStyle>
-                        </DataGrid>
-                    </Grid>
-                </Border>
+                                    <!-- Skin -->
+                                    <Border Grid.Row="1" Grid.Column="0" Background="#D08770" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Skin" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="SkinSummaryText" Grid.Row="1" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
 
-            </Grid>
+                                    <!-- Outfit -->
+                                    <Border Grid.Row="2" Grid.Column="0" Background="#B48EAD" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Default Outfit" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="OutfitSummaryText" Grid.Row="2" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
+
+                                    <!-- Spell -->
+                                    <Border Grid.Row="3" Grid.Column="0" Background="#A3BE8C" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Spell" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="SpellSummaryText" Grid.Row="3" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
+
+                                    <!-- Perk -->
+                                    <Border Grid.Row="4" Grid.Column="0" Background="#BF616A" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="Perk" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="PerkSummaryText" Grid.Row="4" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Border BorderBrush="#3B4252" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                                    <TextBlock x:Name="TotalSummaryText" Text="—"
+                                               FontSize="12" FontWeight="Bold" Foreground="#88C0D0"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Notes -->
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Notes" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,8"/>
+                                <TextBlock FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
+                                    <Run FontWeight="Bold" Foreground="#ECEFF4">Appearance / Skin / Outfit</Run>
+                                    <Run> — winner-takes-all rules. The last file by SkyPatcher load order wins. Use the NPC Conflicts tab to review sources and make a file the winner.</Run>
+                                </TextBlock>
+                                <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
+                                    <Run FontWeight="Bold" Foreground="#ECEFF4">Spell / Perk</Run>
+                                    <Run> — additive rules from SkyPatcher (spellsToAdd / perksToAdd) and SPID (Spell= / Perk=). All matching rules apply, so multiple mods targeting the same NPC may add duplicate or conflicting distributions.</Run>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
             </Grid>
             </TabItem>
 
-            <TabItem Header="By NPC">
+            <TabItem Header="NPC Based Conflicts">
                 <Grid Margin="16">
                     <local:NpcConflictView x:Name="NpcConflictViewControl"/>
                 </Grid>
@@ -603,7 +481,7 @@
 
         <!-- Footer -->
         <Border Grid.Row="2" Background="#242933" Padding="16,8">
-            <TextBlock Text="SkyScope — double-click a row to see conflict details  ·  hover for a quick summary  ·  drag the dividers to resize  ·  click a column header to sort"
+            <TextBlock Text="SkyScope — Report tab shows a summary overview  ·  use the NPC Conflicts tab to review and resolve individual conflicts"
                        FontSize="10" Foreground="#4C566A"/>
         </Border>
     </Grid>

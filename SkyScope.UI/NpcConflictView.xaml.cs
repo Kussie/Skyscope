@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using SkyScope.Core;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
@@ -15,18 +16,27 @@ namespace SkyScope.UI;
 public partial class NpcConflictView : UserControl
 {
     private List<NpcConflictViewModel> _allNpcs = new();
-    private ConflictSummary? _lastSummary;
-    private bool _filterA = true;
-    private bool _filterS = true;
-    private bool _filterO = true;
+    private ConflictSummary?  _lastSummary;
+    private FormNameDatabase? _formDb;
+    private bool _filterA  = true;
+    private bool _filterS  = true;
+    private bool _filterO  = true;
+    private bool _filterSp = true;
+    private bool _filterP  = true;
+
+    // Persistent source — never replaced, only updated in-place so WPF containers
+    // are not torn down while accordion animations may be running.
+    private readonly ObservableCollection<NpcConflictViewModel> _npcListSource = new();
 
     public NpcConflictView()
     {
         InitializeComponent();
+        NpcList.ItemsSource = _npcListSource;
     }
 
-    public void Populate(ConflictSummary summary)
+    public void Populate(ConflictSummary summary, FormNameDatabase? formDb = null)
     {
+        if (formDb != null) _formDb = formDb;
         _lastSummary = summary;
 
         foreach (var vm in _allNpcs)
@@ -35,9 +45,11 @@ public partial class NpcConflictView : UserControl
         var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
         var dict = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
 
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush("#EBCB8B"));
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush("#D08770"));
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush("#B48EAD"));
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush("#EBCB8B"), null);
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush("#D08770"), null);
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush("#B48EAD"), null);
+        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush("#A3BE8C"), _formDb);
+        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush("#BF616A"), _formDb);
 
         foreach (var vm in dict.Values)
         {
@@ -61,7 +73,7 @@ public partial class NpcConflictView : UserControl
     public void Clear()
     {
         _allNpcs = new();
-        NpcList.ItemsSource  = null;
+        _npcListSource.Clear();
         NpcCountText.Text    = "";
         EmptyText.Text       = "Run analysis to populate this view.";
         EmptyText.Visibility = Visibility.Visible;
@@ -72,7 +84,8 @@ public partial class NpcConflictView : UserControl
         List<ConflictEntry> entries,
         RuleType ruleType,
         string label,
-        SolidColorBrush badgeBrush)
+        SolidColorBrush badgeBrush,
+        FormNameDatabase? formDb)
     {
         foreach (var entry in entries)
         {
@@ -107,29 +120,34 @@ public partial class NpcConflictView : UserControl
 
             group.Sources = sorted.Select((src, idx) => new NpcTabSourceViewModel
             {
-                FileName          = Path.GetFileName(src.FilePath),
-                FilePath          = src.FilePath,
-                LineNumber        = src.LineNumber,
-                ConflictLineText  = src.ConflictLine,
-                PrecedingLine     = src.PrecedingLine,
-                FollowingLine     = src.FollowingLine,
-                LoadPosition      = idx + 1,
-                TotalSources      = sorted.Count,
-                RuleValue         = src.RuleValue,
-                SourceTool        = src.SourceTool,
-                SpidChance        = src.SpidChance,
-                SpidNpcIdentifier = src.SpidNpcIdentifier,
-                IsWinner          = winner != null &&
-                                    string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
-                                    src.LineNumber == winner.LineNumber,
-                Group             = group
+                FileName             = Path.GetFileName(src.FilePath),
+                FilePath             = src.FilePath,
+                LineNumber           = src.LineNumber,
+                ConflictLineText     = src.ConflictLine,
+                PrecedingLine        = src.PrecedingLine,
+                FollowingLine        = src.FollowingLine,
+                LoadPosition         = idx + 1,
+                TotalSources         = sorted.Count,
+                RuleValue            = src.RuleValue,
+                ResolvedRuleDisplay  = formDb != null
+                                       ? formDb.ResolveRuleValue(src.RuleValue)
+                                       : src.RuleValue,
+                SourceTool           = src.SourceTool,
+                SpidChance           = src.SpidChance,
+                SpidNpcIdentifier    = src.SpidNpcIdentifier,
+                IsWinner             = winner != null &&
+                                       string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
+                                       src.LineNumber == winner.LineNumber,
+                Group                = group
             }).ToList();
 
             vm.Groups.Add(group);
 
             if      (ruleType == RuleType.Appearance)    vm.HasAppearance = true;
             else if (ruleType == RuleType.Skin)          vm.HasSkin       = true;
-            else                                         vm.HasOutfit     = true;
+            else if (ruleType == RuleType.OutfitDefault) vm.HasOutfit     = true;
+            else if (ruleType == RuleType.Spell)         vm.HasSpell      = true;
+            else if (ruleType == RuleType.Perk)          vm.HasPerk       = true;
 
         }
     }
@@ -152,21 +170,66 @@ public partial class NpcConflictView : UserControl
     {
         var search = SearchBox.Text.Trim();
 
+        // Stage 1: compute FilteredGroups for every NPC so the accordion only
+        // shows groups that match the active type filters.
+        foreach (var vm in _allNpcs)
+        {
+            vm.FilteredGroups = vm.Groups.Where(g =>
+                (g.RuleType == RuleType.Appearance    && _filterA)  ||
+                (g.RuleType == RuleType.Skin          && _filterS)  ||
+                (g.RuleType == RuleType.OutfitDefault && _filterO)  ||
+                (g.RuleType == RuleType.Spell         && _filterSp) ||
+                (g.RuleType == RuleType.Perk          && _filterP)
+            ).ToList();
+        }
+
+        // Stage 2: only show NPCs that have at least one visible group and
+        // match the search text.
         var visible = _allNpcs.Where(vm =>
         {
-            var typeMatch = (vm.HasAppearance && _filterA) ||
-                            (vm.HasSkin       && _filterS) ||
-                            (vm.HasOutfit     && _filterO);
-            if (!typeMatch) return false;
-
+            if (vm.FilteredGroups.Count == 0) return false;
             if (string.IsNullOrEmpty(search)) return true;
-
             return vm.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || vm.SubText.Contains(search, StringComparison.OrdinalIgnoreCase);
         }).ToList();
 
-        NpcList.ItemsSource  = visible.Count > 0 ? visible : (System.Collections.IEnumerable?)null;
-        NpcCountText.Text    = $"{visible.Count} NPC{(visible.Count == 1 ? "" : "s")}";
+        // Sync the persistent ObservableCollection in-place so WPF does not destroy
+        // and recreate containers while accordion animations may be running.
+        // visible is already sorted; _npcListSource is kept in the same order.
+        var visibleSet = new HashSet<NpcConflictViewModel>(visible, ReferenceEqualityComparer.Instance);
+
+        for (int i = _npcListSource.Count - 1; i >= 0; i--)
+        {
+            if (!visibleSet.Contains(_npcListSource[i]))
+            {
+                // Collapse before removal so the VM is in a clean state if it is
+                // re-inserted later — a new container with IsExpanded=true would
+                // immediately fire the expand animation before layout is complete.
+                _npcListSource[i].IsExpanded = false;
+                _npcListSource.RemoveAt(i);
+            }
+        }
+
+        for (int i = 0; i < visible.Count; i++)
+        {
+            var vm = visible[i];
+            if (i >= _npcListSource.Count)
+            {
+                _npcListSource.Add(vm);
+            }
+            else if (!ReferenceEquals(_npcListSource[i], vm))
+            {
+                var existing = -1;
+                for (int j = i + 1; j < _npcListSource.Count; j++)
+                    if (ReferenceEquals(_npcListSource[j], vm)) { existing = j; break; }
+                if (existing >= 0)
+                    _npcListSource.Move(existing, i);
+                else
+                    _npcListSource.Insert(i, vm);
+            }
+        }
+
+        NpcCountText.Text = $"{visible.Count} NPC{(visible.Count == 1 ? "" : "s")}";
 
         if (_allNpcs.Count == 0)
         {
@@ -213,6 +276,20 @@ public partial class NpcConflictView : UserControl
     {
         _filterO = !_filterO;
         UpdateFilterBtn(FilterOButton, _filterO, "#B48EAD");
+        ApplyFilter();
+    }
+
+    private void FilterSp_Click(object sender, RoutedEventArgs e)
+    {
+        _filterSp = !_filterSp;
+        UpdateFilterBtn(FilterSpButton, _filterSp, "#A3BE8C");
+        ApplyFilter();
+    }
+
+    private void FilterP_Click(object sender, RoutedEventArgs e)
+    {
+        _filterP = !_filterP;
+        UpdateFilterBtn(FilterPButton, _filterP, "#BF616A");
         ApplyFilter();
     }
 
@@ -286,6 +363,8 @@ public partial class NpcConflictView : UserControl
                 vm.HasAppearance = vm.Groups.Any(g => g.RuleType == RuleType.Appearance);
                 vm.HasSkin       = vm.Groups.Any(g => g.RuleType == RuleType.Skin);
                 vm.HasOutfit     = vm.Groups.Any(g => g.RuleType == RuleType.OutfitDefault);
+                vm.HasSpell      = vm.Groups.Any(g => g.RuleType == RuleType.Spell);
+                vm.HasPerk       = vm.Groups.Any(g => g.RuleType == RuleType.Perk);
             }
         }
     }
@@ -336,6 +415,27 @@ public class NpcConflictViewModel : INotifyPropertyChanged
         set { _hasOutfit = value; OnPropertyChanged(); }
     }
 
+    private bool _hasSpell;
+    public bool HasSpell
+    {
+        get => _hasSpell;
+        set { _hasSpell = value; OnPropertyChanged(); }
+    }
+
+    private bool _hasPerk;
+    public bool HasPerk
+    {
+        get => _hasPerk;
+        set { _hasPerk = value; OnPropertyChanged(); }
+    }
+
+    private List<NpcConflictGroup> _filteredGroups = new();
+    public List<NpcConflictGroup> FilteredGroups
+    {
+        get => _filteredGroups;
+        set { _filteredGroups = value; OnPropertyChanged(); }
+    }
+
     private bool _isExpanded;
     public bool IsExpanded
     {
@@ -367,8 +467,9 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged
     public string? FollowingLine     { get; init; }
     public int     LoadPosition      { get; init; }
     public int     TotalSources      { get; init; }
-    public string  RuleValue         { get; init; } = "";
-    public string  SourceTool        { get; init; } = "SkyPatcher";
+    public string  RuleValue            { get; init; } = "";
+    public string  ResolvedRuleDisplay  { get; init; } = "";
+    public string  SourceTool           { get; init; } = "SkyPatcher";
     public int?    SpidChance        { get; init; }
     public string? SpidNpcIdentifier { get; init; }
     public NpcConflictGroup? Group   { get; set;  }

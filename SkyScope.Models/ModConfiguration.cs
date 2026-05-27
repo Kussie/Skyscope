@@ -15,7 +15,9 @@ public enum RuleType
 {
     Appearance,   // copyVisualStyle
     Skin,         // skin
-    OutfitDefault // outfitDefault
+    OutfitDefault, // outfitDefault
+    Spell,        // spellsToAdd (SkyPatcher) / Spell= (SPID)
+    Perk          // perksToAdd  (SkyPatcher) / Perk=  (SPID)
 }
 
 public class NpcReference
@@ -111,9 +113,12 @@ public class ConflictSummary
     public List<ConflictEntry> AppearanceConflicts { get; set; } = new();
     public List<ConflictEntry> SkinConflicts { get; set; } = new();
     public List<ConflictEntry> OutfitDefaultConflicts { get; set; } = new();
+    public List<ConflictEntry> SpellConflicts { get; set; } = new();
+    public List<ConflictEntry> PerkConflicts { get; set; } = new();
 
     public int TotalConflicts =>
-        AppearanceConflicts.Count + SkinConflicts.Count + OutfitDefaultConflicts.Count;
+        AppearanceConflicts.Count + SkinConflicts.Count + OutfitDefaultConflicts.Count +
+        SpellConflicts.Count + PerkConflicts.Count;
 
     public int TotalFilesScanned { get; set; }
 }

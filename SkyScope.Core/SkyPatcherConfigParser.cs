@@ -148,6 +148,12 @@ public class SkyPatcherConfigParser
                 case "outfitdefault":
                     rulePairs.Add((RuleType.OutfitDefault, val));
                     break;
+                case "spellstoadd":
+                    rulePairs.Add((RuleType.Spell, val));
+                    break;
+                case "perkstoadd":
+                    rulePairs.Add((RuleType.Perk, val));
+                    break;
             }
         }
 

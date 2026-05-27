@@ -13,6 +13,8 @@ public class ConflictDetector
         var appearanceMap = new Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)>();
         var skinMap       = new Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)>();
         var outfitMap     = new Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)>();
+        var spellMap      = new Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)>();
+        var perkMap       = new Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)>();
 
         foreach (var config in configurations)
         {
@@ -23,6 +25,8 @@ public class ConflictDetector
                     RuleType.Appearance    => appearanceMap,
                     RuleType.Skin          => skinMap,
                     RuleType.OutfitDefault => outfitMap,
+                    RuleType.Spell         => spellMap,
+                    RuleType.Perk          => perkMap,
                     _                      => null
                 };
 
@@ -57,6 +61,9 @@ public class ConflictDetector
         BuildConflicts(appearanceMap, summary.AppearanceConflicts);
         BuildConflicts(skinMap,       summary.SkinConflicts);
         BuildConflicts(outfitMap,     summary.OutfitDefaultConflicts);
+        // Spell/perk are additive — same value from two sources is still a real duplicate
+        BuildConflictsAdditive(spellMap, summary.SpellConflicts);
+        BuildConflictsAdditive(perkMap,  summary.PerkConflicts);
 
         return summary;
     }
@@ -95,6 +102,24 @@ public class ConflictDetector
             var first = sources[0].RuleValue;
             if (sources.All(s => string.Equals(s.RuleValue, first, StringComparison.OrdinalIgnoreCase)))
                 continue;
+
+            target.Add(new ConflictEntry
+            {
+                NpcRef  = npcRef,
+                Sources = new List<ConflictSource>(sources)
+            });
+        }
+    }
+
+    // Additive rules (Spell/Perk): ALL sources apply, so even same-value entries from
+    // different files represent duplicate distribution and are worth surfacing.
+    private static void BuildConflictsAdditive(
+        Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)> map,
+        List<ConflictEntry> target)
+    {
+        foreach (var (_, (npcRef, sources)) in map)
+        {
+            if (sources.Count < 2) continue;
 
             target.Add(new ConflictEntry
             {

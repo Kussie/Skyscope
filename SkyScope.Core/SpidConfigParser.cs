@@ -7,8 +7,8 @@ namespace SkyScope.Core;
 
 public class SpidConfigParser
 {
-    // Returns all Outfit rules found across all *_DISTR.ini files under dataPath.
-    public (List<SkyPatcherRule> Rules, int FilesScanned) LoadOutfitRulesFromDirectory(string dataPath)
+    // Returns all Outfit/Spell/Perk rules found across all *_DISTR.ini files under dataPath.
+    public (List<SkyPatcherRule> Rules, int FilesScanned) LoadDistributionRulesFromDirectory(string dataPath)
     {
         if (!Directory.Exists(dataPath))
             return (new(), 0);
@@ -39,8 +39,15 @@ public class SpidConfigParser
             var eqIdx = trimmed.IndexOf('=');
             if (eqIdx < 0) continue;
 
-            if (!trimmed[..eqIdx].Trim().Equals("Outfit", StringComparison.OrdinalIgnoreCase))
-                continue;
+            var keyName = trimmed[..eqIdx].Trim();
+            var ruleType = keyName.ToLowerInvariant() switch
+            {
+                "outfit" => (RuleType?)RuleType.OutfitDefault,
+                "spell"  => RuleType.Spell,
+                "perk"   => RuleType.Perk,
+                _        => null
+            };
+            if (ruleType is null) continue;
 
             var value = trimmed[(eqIdx + 1)..].Trim();
             if (string.IsNullOrEmpty(value)) continue;
@@ -106,7 +113,7 @@ public class SpidConfigParser
             yield return new SkyPatcherRule
             {
                 TargetNpcs    = npcRefs,
-                RuleType      = RuleType.OutfitDefault,
+                RuleType      = ruleType.Value,
                 RuleValue     = ruleValue,
                 SourceFile    = filePath,
                 LineNumber    = i + 1,

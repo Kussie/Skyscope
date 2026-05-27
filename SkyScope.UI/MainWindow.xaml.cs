@@ -7,90 +7,18 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using FolderBrowserDialog = System.Windows.Forms.FolderBrowserDialog;
-using System.Windows.Input;
 using Microsoft.Win32;
 using SkyScope.Core;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
 
-public class ConflictDisplayItem
-{
-    public string        DisplayName    { get; init; } = string.Empty;
-    public string        WinnerFileName { get; init; } = string.Empty;
-    public string        FileCount      { get; init; } = string.Empty;
-    public string        ToolTipText    { get; init; } = string.Empty;
-    public ConflictEntry Entry          { get; init; } = new();
-    public RuleType      RuleType       { get; init; }
-
-    public static ConflictDisplayItem FromEntry(ConflictEntry entry, RuleType ruleType)
-    {
-        var npc = entry.NpcRef;
-
-        // SkyPatcher loads files in alphanumeric order of their full path (folder structure
-        // is part of the sort key, not just the filename). The last file loaded wins.
-        var sorted     = entry.Sources
-            .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var winnerPath = sorted.Count > 0 ? sorted[sorted.Count - 1].FilePath : string.Empty;
-        var winnerFile = Path.GetFileNameWithoutExtension(winnerPath);
-
-        var sb = new StringBuilder();
-
-        // ── NPC identifier section ──────────────────────────────────────────
-        sb.AppendLine("NPC Identifier");
-        sb.AppendLine(new string('─', 36));
-
-        if (!string.IsNullOrEmpty(entry.ResolvedEditorId))
-            sb.AppendLine($"  Editor ID:  {entry.ResolvedEditorId}");
-
-        if (!string.IsNullOrEmpty(entry.ResolvedName) &&
-            !string.Equals(entry.ResolvedName, entry.ResolvedEditorId, StringComparison.OrdinalIgnoreCase))
-            sb.AppendLine($"  Name:       {entry.ResolvedName}");
-
-        if (npc.RefType == NpcRefType.RecordId)
-        {
-            sb.AppendLine($"  Plugin:     {npc.Plugin}");
-            sb.AppendLine($"  Record ID:  {npc.FormId}");
-        }
-        else if (npc.RefType == NpcRefType.EditorId)
-        {
-            if (string.IsNullOrEmpty(entry.ResolvedEditorId))
-                sb.AppendLine($"  Editor ID:  {npc.Identifier}");
-        }
-        else
-        {
-            if (string.IsNullOrEmpty(entry.ResolvedName))
-                sb.AppendLine($"  Name:       {npc.Identifier}");
-        }
-
-        sb.AppendLine();
-
-        // ── Conflicting files section ────────────────────────────────────────
-        sb.AppendLine($"Conflicting Files ({entry.Sources.Count})  —  last by load path wins");
-        sb.AppendLine(new string('─', 36));
-        foreach (var src in sorted)
-        {
-            bool wins = string.Equals(src.FilePath, winnerPath, StringComparison.OrdinalIgnoreCase);
-            sb.AppendLine($"  {(wins ? "►" : " ")} {Path.GetFileName(src.FilePath)}");
-            sb.AppendLine($"      {src.FilePath}");
-        }
-
-        return new ConflictDisplayItem
-        {
-            DisplayName    = entry.DisplayName,
-            WinnerFileName = winnerFile,
-            FileCount      = entry.Sources.Count.ToString(),
-            ToolTipText    = sb.ToString().TrimEnd(),
-            Entry          = entry,
-            RuleType       = ruleType
-        };
-    }
-}
 
 public partial class MainWindow : Window
 {
     private ConflictSummary? _lastSummary;
+    private int _lastSpidFileCount;
+    private int _lastDbRecordCount;
     private const string SettingsFileName = "skyscope_settings.txt";
 
     public MainWindow()
@@ -162,36 +90,68 @@ public partial class MainWindow : Window
             var db       = new NpcNameDatabase();
             await Task.Run(() => db.Load(skyrimPath, progress));
 
+            StatusTextBlock.Text = "Loading Spell/Perk name database…";
+            var formDb = new FormNameDatabase();
+            await Task.Run(() => formDb.Load(skyrimPath, progress));
+
+            StatusTextBlock.Text = "Scanning SPID distribution files…";
+            var (spidRules, spidFileCount) = await Task.Run(() =>
+                new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+
+            // Bundle SPID spell/perk rules alongside SkyPatcher configs for unified detection
+            var spidSpellPerkConfigs = spidRules
+                .Where(r => r.RuleType is RuleType.Spell or RuleType.Perk)
+                .GroupBy(r => r.SourceFile, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new ModConfiguration
+                {
+                    FilePath = g.Key,
+                    ModName  = Path.GetFileName(g.Key),
+                    Rules    = g.ToList()
+                })
+                .ToList();
+
+            var allConfigs = configs.Concat(spidSpellPerkConfigs).ToList();
+
+            // Drop spell/perk rules whose every form reference points to a plugin that is
+            // not in the current load order — those rules are inactive in-game.
+            foreach (var config in allConfigs)
+                config.Rules.RemoveAll(r =>
+                    (r.RuleType is RuleType.Spell or RuleType.Perk) &&
+                    !formDb.HasAnyLoadedPlugin(r.RuleValue));
+            allConfigs.RemoveAll(c => c.Rules.Count == 0);
+
             StatusTextBlock.Text = "Detecting conflicts…";
             var summary = await Task.Run(() =>
             {
                 var detector = new ConflictDetector();
-                var s = detector.DetectConflicts(configs, db);
+                var s = detector.DetectConflicts(allConfigs, db);
                 s.TotalFilesScanned = configs.Count;
                 return s;
             });
 
             await Task.Run(() => ResolveNames(summary, db));
 
-            StatusTextBlock.Text = "Scanning SPID distribution files…";
-            var (spidRules, spidFileCount) = await Task.Run(() =>
-                new SpidConfigParser().LoadOutfitRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
-
-            if (spidRules.Count > 0)
+            var spidOutfitRules = spidRules.Where(r => r.RuleType == RuleType.OutfitDefault).ToList();
+            if (spidOutfitRules.Count > 0)
             {
-                StatusTextBlock.Text = $"Found {spidRules.Count} SPID outfit rule(s). Merging conflicts…";
-                await Task.Run(() => MergeSpidConflicts(summary, configs, spidRules, db));
+                StatusTextBlock.Text = $"Found {spidOutfitRules.Count} SPID outfit rule(s). Merging conflicts…";
+                await Task.Run(() => MergeSpidConflicts(summary, configs, spidOutfitRules, db));
             }
 
+            _lastSpidFileCount = spidFileCount;
+            _lastDbRecordCount = db.RecordCount;
             _lastSummary = summary;
             DisplayResults(summary);
-            NpcConflictViewControl.Populate(summary);
+            NpcConflictViewControl.Populate(summary, formDb);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0;
 
-            var spidSuffix = spidFileCount > 0 ? $"  SPID: {spidFileCount} file(s), {spidRules.Count} outfit rule(s)." : string.Empty;
+            var spidSpellPerkCount = spidRules.Count(r => r.RuleType is RuleType.Spell or RuleType.Perk);
+            var spidSuffix = spidFileCount > 0
+                ? $"  SPID: {spidFileCount} file(s), {spidOutfitRules.Count} outfit rule(s), {spidSpellPerkCount} spell/perk rule(s)."
+                : string.Empty;
             StatusTextBlock.Text = summary.TotalConflicts == 0
-                ? $"Analysis complete — no conflicts in {configs.Count} file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}"
-                : $"Analysis complete — {summary.TotalConflicts} conflict(s) in {configs.Count} file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}";
+                ? $"Analysis complete — no conflicts in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}"
+                : $"Analysis complete — {summary.TotalConflicts} conflict(s) in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}";
         }
         catch (Exception ex)
         {
@@ -345,119 +305,46 @@ public partial class MainWindow : Window
     };
 
     private static IEnumerable<ConflictEntry> AllEntries(ConflictSummary s) =>
-        s.AppearanceConflicts.Concat(s.SkinConflicts).Concat(s.OutfitDefaultConflicts);
+        s.AppearanceConflicts.Concat(s.SkinConflicts).Concat(s.OutfitDefaultConflicts)
+         .Concat(s.SpellConflicts).Concat(s.PerkConflicts);
 
     private void DisplayResults(ConflictSummary summary)
     {
-        var filter        = FilterTextBox.Text.Trim();
-        var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
+        SkyPatcherFilesText.Text = summary.TotalFilesScanned.ToString();
+        SpidFilesText.Text       = _lastSpidFileCount.ToString();
+        NpcDbRecordsText.Text    = $"{_lastDbRecordCount:N0}";
 
-        FilesScannedText.Text    = summary.TotalFilesScanned.ToString();
-        AppearanceCountText.Text = summary.AppearanceConflicts.Count.ToString();
-        SkinCountText.Text       = summary.SkinConflicts.Count.ToString();
-        OutfitCountText.Text     = summary.OutfitDefaultConflicts.Count.ToString();
+        AppearanceSummaryText.Text = SummaryLine(summary.AppearanceConflicts.Count);
+        SkinSummaryText.Text       = SummaryLine(summary.SkinConflicts.Count);
+        OutfitSummaryText.Text     = SummaryLine(summary.OutfitDefaultConflicts.Count);
+        SpellSummaryText.Text      = SummaryLine(summary.SpellConflicts.Count);
+        PerkSummaryText.Text       = SummaryLine(summary.PerkConflicts.Count);
 
-        var appearance = FilterEntries(ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts, showLowChance), filter);
-        var skin       = FilterEntries(ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,       showLowChance), filter);
-        var outfit     = FilterEntries(ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), filter);
+        var activeTypes = (summary.AppearanceConflicts.Count    > 0 ? 1 : 0)
+                        + (summary.SkinConflicts.Count          > 0 ? 1 : 0)
+                        + (summary.OutfitDefaultConflicts.Count > 0 ? 1 : 0)
+                        + (summary.SpellConflicts.Count         > 0 ? 1 : 0)
+                        + (summary.PerkConflicts.Count          > 0 ? 1 : 0);
+        TotalSummaryText.Text = summary.TotalConflicts == 0
+            ? "No conflicts detected"
+            : $"{summary.TotalConflicts} conflict(s) across {activeTypes} type(s)";
 
-        PopulateGrid(AppearanceDataGrid, AppearanceEmptyText, AppearanceBadge, AppearanceBadgeText,
-                     appearance, RuleType.Appearance);
-        PopulateGrid(SkinDataGrid,       SkinEmptyText,       SkinBadge,       SkinBadgeText,
-                     skin,        RuleType.Skin);
-        PopulateGrid(OutfitDataGrid,     OutfitEmptyText,     OutfitBadge,     OutfitBadgeText,
-                     outfit, RuleType.OutfitDefault);
-
-        UpdateRowHeights(appearance.Count > 0, skin.Count > 0, outfit.Count > 0);
-
-        FilterNoMatchText.Visibility =
-            !string.IsNullOrEmpty(filter) && appearance.Count == 0 && skin.Count == 0 && outfit.Count == 0
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+        ReportPlaceholderText.Visibility = Visibility.Collapsed;
+        ReportSummaryPanel.Visibility    = Visibility.Visible;
     }
 
-    private static List<ConflictEntry> FilterEntries(List<ConflictEntry> entries, string filter)
-    {
-        if (string.IsNullOrEmpty(filter)) return entries;
-        return entries
-            .Where(e => e.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                     || e.NpcRef.DisplayText.Contains(filter, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-    }
-
-    private void FilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_lastSummary is null) return;
-        DisplayResults(_lastSummary);
-    }
-
-    private void SpidFilter_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_lastSummary is null) return;
-        DisplayResults(_lastSummary);
-    }
-
-    private static void PopulateGrid(
-        DataGrid grid, TextBlock emptyText, Border badge, TextBlock badgeText,
-        List<ConflictEntry> entries, RuleType ruleType)
-    {
-        grid.ItemsSource = entries.Select(e => ConflictDisplayItem.FromEntry(e, ruleType)).ToList();
-
-        var has = entries.Count > 0;
-        grid.Visibility      = has ? Visibility.Visible   : Visibility.Collapsed;
-        emptyText.Visibility = has ? Visibility.Collapsed : Visibility.Visible;
-        badge.Visibility     = has ? Visibility.Visible   : Visibility.Collapsed;
-        badgeText.Text       = entries.Count.ToString();
-    }
-
-    private void UpdateRowHeights(bool hasAppearance, bool hasSkin, bool hasOutfit)
-    {
-        var large = new System.Windows.GridLength(3, GridUnitType.Star);
-        var small = new System.Windows.GridLength(1, GridUnitType.Star);
-        AppearanceRow.Height = hasAppearance ? large : small;
-        SkinRow.Height       = hasSkin       ? large : small;
-        OutfitRow.Height     = hasOutfit     ? large : small;
-    }
+    private static string SummaryLine(int count) =>
+        count == 0 ? "No conflicts" : $"{count} NPC(s) affected";
 
     private void ClearResults()
     {
-        FilesScannedText.Text    = "—";
-        AppearanceCountText.Text = "—";
-        SkinCountText.Text       = "—";
-        OutfitCountText.Text     = "—";
-
-        foreach (var g in new[] { AppearanceDataGrid, SkinDataGrid, OutfitDataGrid })
-            g.ItemsSource = null;
-
-        AppearanceEmptyText.Visibility = Visibility.Visible;
-        SkinEmptyText.Visibility       = Visibility.Visible;
-        OutfitEmptyText.Visibility     = Visibility.Visible;
-
-        AppearanceDataGrid.Visibility = Visibility.Collapsed;
-        SkinDataGrid.Visibility       = Visibility.Collapsed;
-        OutfitDataGrid.Visibility     = Visibility.Collapsed;
-
-        AppearanceBadge.Visibility = Visibility.Collapsed;
-        SkinBadge.Visibility       = Visibility.Collapsed;
-        OutfitBadge.Visibility     = Visibility.Collapsed;
-
-        var star = new System.Windows.GridLength(1, GridUnitType.Star);
-        AppearanceRow.Height = star;
-        SkinRow.Height       = star;
-        OutfitRow.Height     = star;
-
+        ReportSummaryPanel.Visibility    = Visibility.Collapsed;
+        ReportPlaceholderText.Visibility = Visibility.Visible;
         ExportReportButton.IsEnabled = false;
         NpcConflictViewControl.Clear();
-        _lastSummary = null;
-    }
-
-    private void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not DataGrid grid) return;
-        if (grid.SelectedItem is not ConflictDisplayItem item) return;
-
-        var detail = new ConflictDetailWindow(item.Entry, item.RuleType) { Owner = this };
-        detail.ShowDialog();
+        _lastSummary       = null;
+        _lastSpidFileCount = 0;
+        _lastDbRecordCount = 0;
     }
 
     private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -494,17 +381,21 @@ public partial class MainWindow : Window
         }
     }
 
-    private static string BuildTextReport(ConflictSummary summary)
+    private string BuildTextReport(ConflictSummary summary)
     {
         var sb = new StringBuilder();
         sb.AppendLine("=== SkyScope Conflict Report ===");
-        sb.AppendLine($"Generated:       {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        sb.AppendLine($"Files scanned:   {summary.TotalFilesScanned}");
-        sb.AppendLine($"Total conflicts: {summary.TotalConflicts}");
+        sb.AppendLine($"Generated:              {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine($"SkyPatcher files:       {summary.TotalFilesScanned}");
+        sb.AppendLine($"SPID files:             {_lastSpidFileCount}");
+        sb.AppendLine($"NPC database records:   {_lastDbRecordCount:N0}");
+        sb.AppendLine($"Total conflicts:        {summary.TotalConflicts}");
         sb.AppendLine();
-        AppendSection(sb, "Appearance Conflicts (copyVisualStyle)",    summary.AppearanceConflicts);
-        AppendSection(sb, "Skin Conflicts (skin)",                      summary.SkinConflicts);
-        AppendSection(sb, "Default Outfit Conflicts (outfitDefault)",   summary.OutfitDefaultConflicts);
+        AppendSection(sb, "Appearance Conflicts (copyVisualStyle)",           summary.AppearanceConflicts);
+        AppendSection(sb, "Skin Conflicts (skin)",                             summary.SkinConflicts);
+        AppendSection(sb, "Default Outfit Conflicts (outfitDefault)",          summary.OutfitDefaultConflicts);
+        AppendSection(sb, "Spell Conflicts (spellsToAdd / SPID Spell=)",       summary.SpellConflicts);
+        AppendSection(sb, "Perk Conflicts (perksToAdd / SPID Perk=)",          summary.PerkConflicts);
         return sb.ToString();
     }
 
