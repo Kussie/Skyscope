@@ -25,6 +25,9 @@ public class SpidConfigParser
         return (rules, files.Length);
     }
 
+    private static string StripHexPrefix(string s) =>
+        s.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? s[2..] : s;
+
     private static IEnumerable<SkyPatcherRule> ParseFile(string filePath)
     {
         var lines = File.ReadAllLines(filePath);
@@ -57,42 +60,81 @@ public class SpidConfigParser
             var ruleValue = fields[0].Trim();
             var npcRefs   = new List<NpcReference>();
 
-            // Field 1 — StringFilters: SPID matches these against the NPC's display name.
-            // Comma-separated; values without spaces are usually EditorIds used as display names,
-            // values with spaces are full names. Both get NpcRefType.Name so they go through the
-            // name→EditorId reverse lookup during merge.
+            // Field 1 — StringFilters: string names / EditorIds, or 0x...~Plugin.esp form refs.
             if (fields.Length > 1)
             {
                 foreach (var raw in fields[1].Split(','))
                 {
                     var f = raw.Trim();
                     if (string.IsNullOrEmpty(f) || f[0] == '-') continue;
+                    if (uint.TryParse(f, out _)) continue;  // bare decimal — not a useful filter
 
-                    npcRefs.Add(new NpcReference
+                    if (f.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                     {
-                        RefType    = NpcRefType.Name,
-                        Identifier = f
-                    });
+                        // 0xFormId~Plugin.esp → RecordId ref
+                        var ti = f.IndexOf('~');
+                        if (ti > 0)
+                        {
+                            var fid = StripHexPrefix(f[..ti].Trim());
+                            var plg = f[(ti + 1)..].Trim();
+                            if (!string.IsNullOrEmpty(fid) && !string.IsNullOrEmpty(plg))
+                                npcRefs.Add(new NpcReference { RefType = NpcRefType.RecordId, Plugin = plg, FormId = fid });
+                        }
+                        else
+                        {
+                            // Bare 0x... — look up across all plugins at detection time
+                            npcRefs.Add(new NpcReference { RefType = NpcRefType.LocalFormId, Identifier = f });
+                        }
+                        continue;
+                    }
+
+                    if (f.Contains('~')) continue;  // unrecognised form-ref format
+                    if (f.Contains('|')) continue;  // shouldn't appear in field 1
+
+                    npcRefs.Add(new NpcReference { RefType = NpcRefType.Name, Identifier = f });
                 }
             }
 
-            // Field 2 — FormFilters: explicit EditorId (or plugin|formid) references.
-            // We only handle plain EditorIds here; plugin|formid and 0x hex values are skipped.
+            // Field 2 — FormFilters: EditorIds, Plugin|FormId, or 0x... bare hex form IDs.
             if (fields.Length > 2)
             {
                 foreach (var raw in fields[2].Split(','))
                 {
                     var f = raw.Trim();
                     if (string.IsNullOrEmpty(f) || f[0] == '-') continue;
-                    if (f.Contains('|')) continue;                               // plugin|formid
-                    if (f.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) continue; // hex formid
-                    if (uint.TryParse(f, out _)) continue;                       // decimal formid
+                    if (uint.TryParse(f, out _)) continue;  // bare decimal form ID — skip
 
-                    npcRefs.Add(new NpcReference
+                    // Plugin.esp|FormId  (or Plugin.esp|0xFormId)
+                    var pi = f.IndexOf('|');
+                    if (pi > 0)
                     {
-                        RefType    = NpcRefType.EditorId,
-                        Identifier = f
-                    });
+                        var plg = f[..pi].Trim();
+                        var fid = StripHexPrefix(f[(pi + 1)..].Trim());
+                        if (!string.IsNullOrEmpty(plg) && !string.IsNullOrEmpty(fid))
+                            npcRefs.Add(new NpcReference { RefType = NpcRefType.RecordId, Plugin = plg, FormId = fid });
+                        continue;
+                    }
+
+                    // 0x...~Plugin.esp or bare 0x...
+                    if (f.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var ti = f.IndexOf('~');
+                        if (ti > 0)
+                        {
+                            var fid = StripHexPrefix(f[..ti].Trim());
+                            var plg = f[(ti + 1)..].Trim();
+                            if (!string.IsNullOrEmpty(fid) && !string.IsNullOrEmpty(plg))
+                                npcRefs.Add(new NpcReference { RefType = NpcRefType.RecordId, Plugin = plg, FormId = fid });
+                        }
+                        else
+                        {
+                            npcRefs.Add(new NpcReference { RefType = NpcRefType.LocalFormId, Identifier = f });
+                        }
+                        continue;
+                    }
+
+                    // Plain EditorId
+                    npcRefs.Add(new NpcReference { RefType = NpcRefType.EditorId, Identifier = f });
                 }
             }
 

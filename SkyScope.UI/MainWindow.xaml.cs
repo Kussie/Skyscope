@@ -169,9 +169,17 @@ public partial class MainWindow : Window
     {
         foreach (var entry in AllEntries(summary))
         {
-            if (entry.NpcRef.RefType != NpcRefType.RecordId) continue;
-            entry.ResolvedName     = db.ResolveName(entry.NpcRef.Plugin, entry.NpcRef.FormId);
-            entry.ResolvedEditorId = db.ResolveEditorId(entry.NpcRef.Plugin, entry.NpcRef.FormId);
+            if (entry.NpcRef.RefType == NpcRefType.RecordId)
+            {
+                entry.ResolvedName     = db.ResolveName(entry.NpcRef.Plugin, entry.NpcRef.FormId);
+                entry.ResolvedEditorId = db.ResolveEditorId(entry.NpcRef.Plugin, entry.NpcRef.FormId);
+            }
+            else if (entry.NpcRef.RefType == NpcRefType.LocalFormId)
+            {
+                var (eid, name)        = db.ResolveByLocalFormId(entry.NpcRef.Identifier);
+                entry.ResolvedEditorId = eid;
+                entry.ResolvedName     = name;
+            }
         }
     }
 

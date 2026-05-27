@@ -39,6 +39,16 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="NpcTabDangerButton" TargetType="Button" BasedOn="{StaticResource NpcTabPrimaryButton}">
+            <Setter Property="Background" Value="#BF616A"/>
+            <Setter Property="Foreground" Value="#ECEFF4"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#CF7177"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="FilterToggleStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="#8C9BB5"/>
             <Setter Property="FontSize" Value="10"/>
@@ -229,7 +239,7 @@
                                             <TextBlock Text="{Binding DisplayName}"
                                                        FontSize="13" FontWeight="SemiBold" Foreground="#ECEFF4"/>
                                             <TextBlock Text="{Binding SubText}"
-                                                       FontSize="10" Foreground="#8C9BB5" Margin="0,2,0,0">
+                                                       FontSize="10" Foreground="#B8C5D5" Margin="0,2,0,0">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Style.Triggers>
@@ -393,19 +403,28 @@
                                             <DataTemplate>
                                                 <StackPanel Margin="0,8,0,0">
 
-                                                    <!-- Group type label -->
+                                                    <!-- Group type header — full-width coloured strip -->
                                                     <Border Background="{Binding BadgeBrush}" CornerRadius="3"
-                                                            Padding="8,3" HorizontalAlignment="Left" Margin="0,0,0,6">
+                                                            Padding="10,6" Margin="0,0,0,6">
                                                         <TextBlock Text="{Binding Label}"
-                                                                   FontSize="10" FontWeight="Bold" Foreground="#2E3440"/>
+                                                                   FontSize="11" FontWeight="Bold" Foreground="#2E3440"/>
                                                     </Border>
 
                                                     <!-- Source cards -->
                                                     <ItemsControl ItemsSource="{Binding Sources}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Border Background="#434C5E" CornerRadius="3"
-                                                                        Margin="0,0,0,4" Padding="10,8">
+                                                                <Border CornerRadius="3" Margin="0,0,0,4" Padding="10,8">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Background" Value="#434C5E"/>
+                                                                            <Style.Triggers>
+                                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                                    <Setter Property="Background" Value="#4E5A6E"/>
+                                                                                </Trigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
                                                                     <StackPanel>
 
                                                                         <!-- Row 1: filename + badges -->
@@ -448,7 +467,7 @@
                                                                                                FontSize="9" FontWeight="Bold"
                                                                                                Foreground="#ECEFF4"/>
                                                                                 </Border>
-                                                                                <!-- Winner badge -->
+                                                                                <!-- Winner badge (hidden for additive rule types) -->
                                                                                 <Border Background="#A3BE8C" CornerRadius="3"
                                                                                         Padding="6,2" Margin="4,0,0,0"
                                                                                         VerticalAlignment="Center">
@@ -458,6 +477,9 @@
                                                                                             <Style.Triggers>
                                                                                                 <DataTrigger Binding="{Binding IsWinner}" Value="True">
                                                                                                     <Setter Property="Visibility" Value="Visible"/>
+                                                                                                </DataTrigger>
+                                                                                                <DataTrigger Binding="{Binding IsAdditive}" Value="True">
+                                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
                                                                                                 </DataTrigger>
                                                                                             </Style.Triggers>
                                                                                         </Style>
@@ -470,7 +492,7 @@
 
                                                                         <!-- Row 2: rule value -->
                                                                         <TextBlock Text="{Binding ResolvedRuleDisplay}"
-                                                                                   FontSize="10" Foreground="#6C7A8A"
+                                                                                   FontSize="10" Foreground="#A0AFBE"
                                                                                    Margin="0,4,0,0"
                                                                                    TextTrimming="CharacterEllipsis"/>
 
@@ -492,11 +514,11 @@
                                                                                     </StackPanel.Style>
                                                                                     <TextBlock Text="{Binding PrecedingLineNumber}"
                                                                                                Width="32" FontFamily="Consolas" FontSize="10"
-                                                                                               Foreground="#4C566A" TextAlignment="Right"
+                                                                                               Foreground="#6C7A8A" TextAlignment="Right"
                                                                                                Margin="0,0,8,0"/>
                                                                                     <TextBlock Text="{Binding PrecedingLine}"
                                                                                                FontFamily="Consolas" FontSize="10"
-                                                                                               Foreground="#4C566A"
+                                                                                               Foreground="#7B8899"
                                                                                                TextTrimming="CharacterEllipsis"/>
                                                                                 </StackPanel>
 
@@ -531,11 +553,11 @@
                                                                                     </StackPanel.Style>
                                                                                     <TextBlock Text="{Binding FollowingLineNumber}"
                                                                                                Width="32" FontFamily="Consolas" FontSize="10"
-                                                                                               Foreground="#4C566A" TextAlignment="Right"
+                                                                                               Foreground="#6C7A8A" TextAlignment="Right"
                                                                                                Margin="0,0,8,0"/>
                                                                                     <TextBlock Text="{Binding FollowingLine}"
                                                                                                FontFamily="Consolas" FontSize="10"
-                                                                                               Foreground="#4C566A"
+                                                                                               Foreground="#7B8899"
                                                                                                TextTrimming="CharacterEllipsis"/>
                                                                                 </StackPanel>
 
@@ -544,17 +566,43 @@
 
                                                                         <!-- Row 4: file path -->
                                                                         <TextBlock Text="{Binding FilePath}"
-                                                                                   FontSize="9" Foreground="#6C7A8A"
+                                                                                   FontSize="9" Foreground="#8C99A8"
                                                                                    Margin="0,4,0,0"
                                                                                    TextTrimming="CharacterEllipsis"/>
 
                                                                         <!-- Row 5: buttons -->
                                                                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                                            <!-- Make Winner — winner-takes-all types (Appearance/Skin/Outfit) -->
                                                                             <Button Content="Make Winner"
                                                                                     Tag="{Binding}"
-                                                                                    Click="MakeWinner_Click"
-                                                                                    Style="{StaticResource NpcTabPrimaryButton}"
-                                                                                    Margin="0,0,6,0"/>
+                                                                                    Click="MakeWinner_Click">
+                                                                                <Button.Style>
+                                                                                    <Style TargetType="Button" BasedOn="{StaticResource NpcTabPrimaryButton}">
+                                                                                        <Setter Property="Margin" Value="0,0,6,0"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsAdditive}" Value="True">
+                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Button.Style>
+                                                                            </Button>
+                                                                            <!-- Remove — additive types (Spell/Perk) -->
+                                                                            <Button Content="Remove"
+                                                                                    Tag="{Binding}"
+                                                                                    Click="RemoveSource_Click">
+                                                                                <Button.Style>
+                                                                                    <Style TargetType="Button" BasedOn="{StaticResource NpcTabDangerButton}">
+                                                                                        <Setter Property="Margin" Value="0,0,6,0"/>
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsAdditive}" Value="True">
+                                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Button.Style>
+                                                                            </Button>
                                                                             <Button Content="Open File"
                                                                                     Tag="{Binding}"
                                                                                     Click="OpenFile_Click"

@@ -8,7 +8,8 @@ public enum NpcRefType
 {
     RecordId,
     EditorId,
-    Name
+    Name,
+    LocalFormId  // bare 0x... hex with no plugin context — resolved across all loaded plugins
 }
 
 public enum RuleType
@@ -37,10 +38,11 @@ public class NpcReference
 
     public string NormalizedKey => RefType switch
     {
-        NpcRefType.RecordId => $"RID:{Plugin.ToLowerInvariant()}|{NormalizeFormId(FormId)}",
-        NpcRefType.EditorId => $"EID:{Identifier.ToLowerInvariant()}",
-        NpcRefType.Name     => $"NAME:{Identifier.ToLowerInvariant()}",
-        _                   => string.Empty
+        NpcRefType.RecordId    => $"RID:{Plugin.ToLowerInvariant()}|{NormalizeFormId(FormId)}",
+        NpcRefType.EditorId    => $"EID:{Identifier.ToLowerInvariant()}",
+        NpcRefType.Name        => $"NAME:{Identifier.ToLowerInvariant()}",
+        NpcRefType.LocalFormId => $"LFI:{Identifier.ToLowerInvariant()}",
+        _                      => string.Empty
     };
 
     private static string NormalizeFormId(string formId)

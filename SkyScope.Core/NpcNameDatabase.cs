@@ -17,6 +17,11 @@ public class NpcNameDatabase
     // all known NPC editorIds — used to reject SPID FormFilter values that are factions/keywords
     private readonly HashSet<string> _editorIdSet = new(StringComparer.OrdinalIgnoreCase);
 
+    // localFormId -> (editorId, name) for UNIQUE matches across all loaded plugins.
+    // null value means the same local form ID exists in multiple plugins (ambiguous).
+    // Used to resolve bare 0x... form IDs that appear in SPID FormFilters without a plugin prefix.
+    private readonly Dictionary<uint, (string? EditorId, string? Name)?> _localFormIdUnique = new();
+
     public bool IsLoaded    { get; private set; }
     public int  RecordCount => _lookup.Count;
 
@@ -27,6 +32,7 @@ public class NpcNameDatabase
         _lookup.Clear();
         _nameToEditorId.Clear();
         _editorIdSet.Clear();
+        _localFormIdUnique.Clear();
         NpcCountByPlugin.Clear();
         IsLoaded = false;
 
@@ -85,6 +91,16 @@ public class NpcNameDatabase
             }
         }
 
+        // Build secondary index: localFormId -> (editorId, name) when the ID is unique across all plugins.
+        // Bare hex form IDs in SPID FormFilters (no plugin prefix) are resolved against this index.
+        foreach (var ((_, localFormId), (name, editorId)) in _lookup)
+        {
+            if (!_localFormIdUnique.TryGetValue(localFormId, out var existing))
+                _localFormIdUnique[localFormId] = (editorId, name);
+            else if (existing != null)
+                _localFormIdUnique[localFormId] = null; // same local ID in multiple plugins → ambiguous
+        }
+
         IsLoaded = true;
         progress?.Report($"NPC database ready — {_lookup.Count:N0} record(s) indexed.");
     }
@@ -105,6 +121,23 @@ public class NpcNameDatabase
         _nameToEditorId.TryGetValue(name, out var editorId) ? editorId : null;
 
     public bool IsNpcEditorId(string editorId) => _editorIdSet.Contains(editorId);
+
+    // Resolve a bare hex form ID (e.g. "0x13743") by searching across all indexed plugins.
+    // Returns (EditorId, Name) only when exactly one NPC in the entire load order has that local
+    // form ID.  Returns (null, null) when the ID is ambiguous (multiple plugins) or not found.
+    public (string? EditorId, string? Name) ResolveByLocalFormId(string hexFormId)
+    {
+        var hex = hexFormId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                  ? hexFormId[2..] : hexFormId;
+        if (!uint.TryParse(hex, NumberStyles.HexNumber, null, out var raw)) return (null, null);
+        uint localFormId = raw & 0x00FFFFFF;
+        if (!_localFormIdUnique.TryGetValue(localFormId, out var entry) || entry == null)
+            return (null, null);
+        return (entry.Value.EditorId, entry.Value.Name);
+    }
+
+    public string? ResolveEditorIdByLocalFormId(string hexFormId) =>
+        ResolveByLocalFormId(hexFormId).EditorId;
 
     private (string? Name, string? EditorId) Lookup(string plugin, string formIdHex)
     {

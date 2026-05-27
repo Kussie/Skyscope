@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using SkyScope.Core;
 using SkyScope.Models;
 
@@ -23,6 +24,7 @@ public partial class NpcConflictView : UserControl
     private bool _filterO  = true;
     private bool _filterSp = true;
     private bool _filterP  = true;
+    private DispatcherTimer? _searchDebounce;
 
     // Persistent source — never replaced, only updated in-place so WPF containers
     // are not torn down while accordion animations may be running.
@@ -118,28 +120,32 @@ public partial class NpcConflictView : UserControl
                 Parent     = vm
             };
 
-            group.Sources = sorted.Select((src, idx) => new NpcTabSourceViewModel
-            {
-                FileName             = Path.GetFileName(src.FilePath),
-                FilePath             = src.FilePath,
-                LineNumber           = src.LineNumber,
-                ConflictLineText     = src.ConflictLine,
-                PrecedingLine        = src.PrecedingLine,
-                FollowingLine        = src.FollowingLine,
-                LoadPosition         = idx + 1,
-                TotalSources         = sorted.Count,
-                RuleValue            = src.RuleValue,
-                ResolvedRuleDisplay  = formDb != null
-                                       ? formDb.ResolveRuleValue(src.RuleValue)
-                                       : src.RuleValue,
-                SourceTool           = src.SourceTool,
-                SpidChance           = src.SpidChance,
-                SpidNpcIdentifier    = src.SpidNpcIdentifier,
-                IsWinner             = winner != null &&
-                                       string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
-                                       src.LineNumber == winner.LineNumber,
-                Group                = group
-            }).ToList();
+            bool isAdditive = ruleType is RuleType.Spell or RuleType.Perk;
+            group.Sources = new ObservableCollection<NpcTabSourceViewModel>(
+                sorted.Select((src, idx) => new NpcTabSourceViewModel
+                {
+                    FileName            = Path.GetFileName(src.FilePath),
+                    FilePath            = src.FilePath,
+                    LineNumber          = src.LineNumber,
+                    ConflictLineText    = src.ConflictLine,
+                    PrecedingLine       = src.PrecedingLine,
+                    FollowingLine       = src.FollowingLine,
+                    LoadPosition        = idx + 1,
+                    TotalSources        = sorted.Count,
+                    RuleValue           = src.RuleValue,
+                    ResolvedRuleDisplay = formDb != null
+                                         ? formDb.ResolveRuleValue(src.RuleValue)
+                                         : src.RuleValue,
+                    SourceTool          = src.SourceTool,
+                    SpidChance          = src.SpidChance,
+                    SpidNpcIdentifier   = src.SpidNpcIdentifier,
+                    IsAdditive          = isAdditive,
+                    IsWinner            = !isAdditive &&
+                                         winner != null &&
+                                         string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
+                                         src.LineNumber == winner.LineNumber,
+                    Group               = group
+                }));
 
             vm.Groups.Add(group);
 
@@ -255,7 +261,17 @@ public partial class NpcConflictView : UserControl
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (_allNpcs.Count > 0) ApplyFilter();
+        if (_searchDebounce == null)
+        {
+            _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            _searchDebounce.Tick += (_, _) =>
+            {
+                _searchDebounce.Stop();
+                if (_allNpcs.Count > 0) ApplyFilter();
+            };
+        }
+        _searchDebounce.Stop();
+        _searchDebounce.Start();
     }
 
     private void FilterA_Click(object sender, RoutedEventArgs e)
@@ -369,6 +385,52 @@ public partial class NpcConflictView : UserControl
         }
     }
 
+    private void RemoveSource_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn) return;
+        if (btn.Tag is not NpcTabSourceViewModel src) return;
+        var group = src.Group;
+        if (group == null) return;
+
+        try
+        {
+            if (src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier))
+                ConflictResolutionHelper.RemoveNpcFromSpidLine(
+                    src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier);
+            else
+                ConflictResolutionHelper.CommentOutLine(
+                    src.FilePath, src.LineNumber, src.ConflictLineText);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not modify file:\n\n{ex.Message}", "SkyScope — Remove",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        group.Sources.Remove(src);
+
+        if (group.Sources.Count < 2)
+        {
+            var vm = group.Parent;
+            if (vm != null)
+            {
+                vm.Groups.Remove(group);
+                if (vm.Groups.Count == 0)
+                {
+                    _allNpcs.Remove(vm);
+                    ApplyFilter();
+                }
+                else
+                {
+                    vm.HasSpell = vm.Groups.Any(g => g.RuleType == RuleType.Spell);
+                    vm.HasPerk  = vm.Groups.Any(g => g.RuleType == RuleType.Perk);
+                    ApplyFilter();
+                }
+            }
+        }
+    }
+
     private void OpenFile_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn) return;
@@ -450,11 +512,11 @@ public class NpcConflictViewModel : INotifyPropertyChanged
 
 public class NpcConflictGroup
 {
-    public RuleType                    RuleType   { get; init; }
-    public string                      Label      { get; init; } = "";
-    public SolidColorBrush             BadgeBrush { get; init; } = Brushes.Gray;
-    public List<NpcTabSourceViewModel> Sources    { get; set;  } = new();
-    public NpcConflictViewModel?       Parent     { get; set;  }
+    public RuleType                                    RuleType   { get; init; }
+    public string                                      Label      { get; init; } = "";
+    public SolidColorBrush                             BadgeBrush { get; init; } = Brushes.Gray;
+    public ObservableCollection<NpcTabSourceViewModel> Sources    { get; set;  } = new();
+    public NpcConflictViewModel?                       Parent     { get; set;  }
 }
 
 public class NpcTabSourceViewModel : INotifyPropertyChanged
@@ -469,6 +531,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged
     public int     TotalSources      { get; init; }
     public string  RuleValue            { get; init; } = "";
     public string  ResolvedRuleDisplay  { get; init; } = "";
+    public bool    IsAdditive           { get; init; }
     public string  SourceTool           { get; init; } = "SkyPatcher";
     public int?    SpidChance        { get; init; }
     public string? SpidNpcIdentifier { get; init; }

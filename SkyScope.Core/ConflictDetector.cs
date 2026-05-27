@@ -79,12 +79,34 @@ public class ConflictDetector
                 var eid = db.ResolveEditorId(npcRef.Plugin, npcRef.FormId);
                 if (!string.IsNullOrEmpty(eid))
                     return $"EID:{eid.ToLowerInvariant()}";
+                // RecordId resolves to nothing — NPC not in DB, skip it
+                return string.Empty;
             }
             else if (npcRef.RefType == NpcRefType.Name)
             {
                 var eid = db.FindEditorIdByName(npcRef.Identifier);
                 if (!string.IsNullOrEmpty(eid))
                     return $"EID:{eid.ToLowerInvariant()}";
+                // Value may itself be an NPC EditorId (SPID allows both forms in StringFilters)
+                if (db.IsNpcEditorId(npcRef.Identifier))
+                    return $"EID:{npcRef.Identifier.ToLowerInvariant()}";
+                // Cannot be tied to a real NPC (e.g. ActorTypeNPC keyword, unresolvable hex) — skip
+                return string.Empty;
+            }
+            else if (npcRef.RefType == NpcRefType.EditorId)
+            {
+                // Validate the EditorId belongs to an actual NPC, not a keyword/faction/etc.
+                if (!db.IsNpcEditorId(npcRef.Identifier))
+                    return string.Empty;
+            }
+            else if (npcRef.RefType == NpcRefType.LocalFormId)
+            {
+                // Bare hex form ID with no plugin context — search all loaded plugins.
+                // Only accepted when exactly one NPC in the load order has this local form ID.
+                var eid = db.ResolveEditorIdByLocalFormId(npcRef.Identifier);
+                if (!string.IsNullOrEmpty(eid))
+                    return $"EID:{eid.ToLowerInvariant()}";
+                return string.Empty; // not a unique NPC match → skip
             }
         }
         return npcRef.NormalizedKey;
