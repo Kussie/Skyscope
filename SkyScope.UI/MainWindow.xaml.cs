@@ -21,6 +21,9 @@ public partial class MainWindow : Window
     private int _lastSpidFileCount;
     private int _lastBosFileCount;
     private int _lastDbRecordCount;
+    private int _lastSkyPatcherRuleCount;
+    private int _lastSpidRuleCount;
+    private int _lastBosRuleCount;
     private const string SettingsFileName = "skyscope_settings.txt";
 
     private readonly HistoryStore _historyStore = new();
@@ -154,12 +157,18 @@ public partial class MainWindow : Window
                 new BosConflictDetector().DetectConflicts(bosRules));
             bosSummary.FilesScanned = bosFileCount;
 
-            _lastSpidFileCount = spidFileCount;
-            _lastBosFileCount  = bosFileCount;
-            _lastDbRecordCount = db.RecordCount;
-            _lastSummary       = summary;
-            _lastBosSummary    = bosSummary;
+            _lastSpidFileCount      = spidFileCount;
+            _lastBosFileCount       = bosFileCount;
+            _lastDbRecordCount      = db.RecordCount;
+            _lastSkyPatcherRuleCount = configs.Sum(c => c.Rules.Count);
+            _lastSpidRuleCount      = spidRules.Count;
+            _lastBosRuleCount       = bosRules.Count;
+            _lastSummary            = summary;
+            _lastBosSummary         = bosSummary;
             DisplayResults(summary, bosSummary);
+
+            if (App.VerboseMode)
+                WriteAnalysisLog(configs, spidRules, bosRules);
             NpcConflictViewControl.Populate(summary, formDb);
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;
@@ -341,10 +350,13 @@ public partial class MainWindow : Window
 
     private void DisplayResults(ConflictSummary summary, BosConflictSummary bosSummary)
     {
-        SkyPatcherFilesText.Text = summary.TotalFilesScanned.ToString();
-        SpidFilesText.Text       = _lastSpidFileCount.ToString();
-        BosFilesText.Text        = _lastBosFileCount.ToString();
-        NpcDbRecordsText.Text    = $"{_lastDbRecordCount:N0}";
+        SkyPatcherFilesText.Text  = summary.TotalFilesScanned.ToString("N0");
+        SkyPatcherRulesText.Text  = _lastSkyPatcherRuleCount.ToString("N0");
+        SpidFilesText.Text        = _lastSpidFileCount.ToString("N0");
+        SpidRulesText.Text        = _lastSpidRuleCount.ToString("N0");
+        BosFilesText.Text         = _lastBosFileCount.ToString("N0");
+        BosRulesText.Text         = _lastBosRuleCount.ToString("N0");
+        NpcDbRecordsText.Text     = $"{_lastDbRecordCount:N0}";
 
         AppearanceSummaryText.Text = SummaryLine(summary.AppearanceConflicts.Count);
         SkinSummaryText.Text       = SummaryLine(summary.SkinConflicts.Count);
@@ -381,11 +393,47 @@ public partial class MainWindow : Window
         ExportReportButton.IsEnabled = false;
         NpcConflictViewControl.Clear();
         BosConflictViewControl.Clear();
-        _lastSummary       = null;
-        _lastBosSummary    = null;
-        _lastSpidFileCount = 0;
-        _lastBosFileCount  = 0;
-        _lastDbRecordCount = 0;
+        _lastSummary             = null;
+        _lastBosSummary          = null;
+        _lastSpidFileCount       = 0;
+        _lastBosFileCount        = 0;
+        _lastDbRecordCount       = 0;
+        _lastSkyPatcherRuleCount = 0;
+        _lastSpidRuleCount       = 0;
+        _lastBosRuleCount        = 0;
+    }
+
+    private static void WriteAnalysisLog(
+        List<ModConfiguration> skyPatcherConfigs,
+        List<SkyPatcherRule>   spidRules,
+        List<BosSwapRule>      bosRules)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt");
+            var sb      = new StringBuilder();
+
+            sb.AppendLine("SkyScope Analysis Log");
+            sb.AppendLine($"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine();
+
+            var skyPatcherFiles = skyPatcherConfigs.Select(c => c.FilePath).OrderBy(f => f).ToList();
+            sb.AppendLine($"--- SkyPatcher Files ({skyPatcherFiles.Count}) ---");
+            foreach (var f in skyPatcherFiles) sb.AppendLine(f);
+            sb.AppendLine();
+
+            var spidFiles = spidRules.Select(r => r.SourceFile).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(f => f).ToList();
+            sb.AppendLine($"--- SPID Files ({spidFiles.Count}) ---");
+            foreach (var f in spidFiles) sb.AppendLine(f);
+            sb.AppendLine();
+
+            var bosFiles = bosRules.Select(r => r.SourceFile).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(f => f).ToList();
+            sb.AppendLine($"--- BOS Files ({bosFiles.Count}) ---");
+            foreach (var f in bosFiles) sb.AppendLine(f);
+
+            File.WriteAllText(logPath, sb.ToString(), Encoding.UTF8);
+        }
+        catch { /* best-effort */ }
     }
 
     private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)

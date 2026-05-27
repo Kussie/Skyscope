@@ -9,8 +9,12 @@ public partial class App : Application
 {
     private Mutex? _mutex;
 
+    public static bool VerboseMode { get; private set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        VerboseMode = Array.Exists(e.Args, a => a.Equals("-v", StringComparison.OrdinalIgnoreCase));
+
         DispatcherUnhandledException         += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
 
@@ -30,6 +34,7 @@ public partial class App : Application
             MessageBox.Show("SkyScope is already running.", "SkyScope",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             _mutex?.Dispose();
+            _mutex = null;
             Shutdown();
             return;
         }

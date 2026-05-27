@@ -353,25 +353,74 @@
                         <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                             <StackPanel>
                                 <TextBlock Text="Scan Summary" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,10"/>
-                                <Grid>
+                                <Grid HorizontalAlignment="Left">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200"/>
-                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto" MinWidth="150"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="90"/>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="SkyPatcher files scanned" FontSize="11" Foreground="#88C0D0" Margin="0,3"/>
-                                    <TextBlock x:Name="SkyPatcherFilesText" Grid.Row="0" Grid.Column="1" Text="—" FontSize="11" Foreground="#ECEFF4" FontWeight="Bold" Margin="0,3"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="SPID files scanned" FontSize="11" Foreground="#88C0D0" Margin="0,3"/>
-                                    <TextBlock x:Name="SpidFilesText" Grid.Row="1" Grid.Column="1" Text="—" FontSize="11" Foreground="#ECEFF4" FontWeight="Bold" Margin="0,3"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="BOS files scanned" FontSize="11" Foreground="#88C0D0" Margin="0,3"/>
-                                    <TextBlock x:Name="BosFilesText" Grid.Row="2" Grid.Column="1" Text="—" FontSize="11" Foreground="#ECEFF4" FontWeight="Bold" Margin="0,3"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="NPC database records" FontSize="11" Foreground="#88C0D0" Margin="0,3"/>
-                                    <TextBlock x:Name="NpcDbRecordsText" Grid.Row="3" Grid.Column="1" Text="—" FontSize="11" Foreground="#ECEFF4" FontWeight="Bold" Margin="0,3"/>
+
+                                    <!-- Header row -->
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Files Scanned"
+                                               FontSize="10" FontWeight="SemiBold" Foreground="#88C0D0"
+                                               HorizontalAlignment="Right" Margin="0,0,0,6"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Rules Parsed"
+                                               FontSize="10" FontWeight="SemiBold" Foreground="#88C0D0"
+                                               HorizontalAlignment="Right" Margin="0,0,0,6"/>
+
+                                    <!-- Divider -->
+                                    <Border Grid.Row="1" Grid.ColumnSpan="3"
+                                            Height="1" Background="#3B4252" Margin="0,0,0,4"/>
+
+                                    <!-- SkyPatcher -->
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="SkyPatcher"
+                                               FontSize="11" Foreground="#88C0D0" Margin="0,3,16,3"/>
+                                    <TextBlock x:Name="SkyPatcherFilesText" Grid.Row="2" Grid.Column="1" Text="—"
+                                               FontSize="11" Foreground="#ECEFF4" FontWeight="Bold"
+                                               HorizontalAlignment="Right" Margin="0,3"/>
+                                    <TextBlock x:Name="SkyPatcherRulesText" Grid.Row="2" Grid.Column="2" Text="—"
+                                               FontSize="11" Foreground="#ECEFF4" FontWeight="Bold"
+                                               HorizontalAlignment="Right" Margin="0,3"/>
+
+                                    <!-- SPID -->
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="SPID"
+                                               FontSize="11" Foreground="#88C0D0" Margin="0,3,16,3"/>
+                                    <TextBlock x:Name="SpidFilesText" Grid.Row="3" Grid.Column="1" Text="—"
+                                               FontSize="11" Foreground="#ECEFF4" FontWeight="Bold"
+                                               HorizontalAlignment="Right" Margin="0,3"/>
+                                    <TextBlock x:Name="SpidRulesText" Grid.Row="3" Grid.Column="2" Text="—"
+                                               FontSize="11" Foreground="#ECEFF4" FontWeight="Bold"
+                                               HorizontalAlignment="Right" Margin="0,3"/>
+
+                                    <!-- Base Object Swapper -->
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Base Object Swapper"
+                                               FontSize="11" Foreground="#88C0D0" Margin="0,3,16,3"/>
+                                    <TextBlock x:Name="BosFilesText" Grid.Row="4" Grid.Column="1" Text="—"
+                                               FontSize="11" Foreground="#ECEFF4" FontWeight="Bold"
+                                               HorizontalAlignment="Right" Margin="0,3"/>
+                                    <TextBlock x:Name="BosRulesText" Grid.Row="4" Grid.Column="2" Text="—"
+                                               FontSize="11" Foreground="#ECEFF4" FontWeight="Bold"
+                                               HorizontalAlignment="Right" Margin="0,3"/>
+
+                                    <!-- Divider -->
+                                    <Border Grid.Row="5" Grid.ColumnSpan="3"
+                                            Height="1" Background="#4C566A" Margin="0,6"/>
+
+                                    <!-- NPC database records -->
+                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="NPC database records"
+                                               FontSize="11" Foreground="#88C0D0" Margin="0,3,16,3"/>
+                                    <TextBlock x:Name="NpcDbRecordsText" Grid.Row="6" Grid.Column="1" Text="—"
+                                               FontSize="11" Foreground="#ECEFF4" FontWeight="Bold"
+                                               HorizontalAlignment="Right" Margin="0,3"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
