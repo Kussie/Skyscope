@@ -1,0 +1,51 @@
+<UserControl x:Class="SkyScope.UI.CodeContextBlock"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
+    <Border Background="#272C38" CornerRadius="3" Padding="8,5">
+        <StackPanel>
+
+            <!-- Preceding line -->
+            <StackPanel Orientation="Horizontal"
+                        Visibility="{Binding HasPrecedingLine, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding PrecedingLineNumber, ElementName=Root}"
+                           Width="32" FontFamily="Consolas" FontSize="10"
+                           Foreground="#6C7A8A" TextAlignment="Right" Margin="0,0,8,0"/>
+                <TextBlock Text="{Binding PrecedingLine, ElementName=Root}"
+                           FontFamily="Consolas" FontSize="10" Foreground="#7B8899"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <!-- Conflict line (highlighted with left accent bar) -->
+            <Border Background="#353D4C" CornerRadius="2" Margin="0,1">
+                <Grid>
+                    <Rectangle Width="2" HorizontalAlignment="Left" Fill="#88C0D0"/>
+                    <StackPanel Orientation="Horizontal" Margin="6,2">
+                        <TextBlock Text="{Binding LineNumber, ElementName=Root}"
+                                   Width="32" FontFamily="Consolas" FontSize="10"
+                                   Foreground="#6C7A8A" TextAlignment="Right" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding LineText, ElementName=Root}"
+                                   FontFamily="Consolas" FontSize="10" Foreground="#ECEFF4"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Following line -->
+            <StackPanel Orientation="Horizontal"
+                        Visibility="{Binding HasFollowingLine, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding FollowingLineNumber, ElementName=Root}"
+                           Width="32" FontFamily="Consolas" FontSize="10"
+                           Foreground="#6C7A8A" TextAlignment="Right" Margin="0,0,8,0"/>
+                <TextBlock Text="{Binding FollowingLine, ElementName=Root}"
+                           FontFamily="Consolas" FontSize="10" Foreground="#7B8899"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -16,8 +16,10 @@ namespace SkyScope.UI;
 
 public partial class MainWindow : Window
 {
-    private ConflictSummary? _lastSummary;
+    private ConflictSummary?    _lastSummary;
+    private BosConflictSummary? _lastBosSummary;
     private int _lastSpidFileCount;
+    private int _lastBosFileCount;
     private int _lastDbRecordCount;
     private const string SettingsFileName = "skyscope_settings.txt";
 
@@ -138,20 +140,35 @@ public partial class MainWindow : Window
                 await Task.Run(() => MergeSpidConflicts(summary, configs, spidOutfitRules, db));
             }
 
+            StatusTextBlock.Text = "Scanning Base Object Swapper files…";
+            var (bosRules, bosFileCount) = await Task.Run(() =>
+                new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+
+            var bosSummary = await Task.Run(() =>
+                new BosConflictDetector().DetectConflicts(bosRules));
+            bosSummary.FilesScanned = bosFileCount;
+
             _lastSpidFileCount = spidFileCount;
+            _lastBosFileCount  = bosFileCount;
             _lastDbRecordCount = db.RecordCount;
-            _lastSummary = summary;
-            DisplayResults(summary);
+            _lastSummary       = summary;
+            _lastBosSummary    = bosSummary;
+            DisplayResults(summary, bosSummary);
             NpcConflictViewControl.Populate(summary, formDb);
-            ExportReportButton.IsEnabled = summary.TotalConflicts > 0;
+            BosConflictViewControl.Populate(bosSummary);
+            ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;
 
             var spidSpellPerkCount = spidRules.Count(r => r.RuleType is RuleType.Spell or RuleType.Perk);
             var spidSuffix = spidFileCount > 0
                 ? $"  SPID: {spidFileCount} file(s), {spidOutfitRules.Count} outfit rule(s), {spidSpellPerkCount} spell/perk rule(s)."
                 : string.Empty;
-            StatusTextBlock.Text = summary.TotalConflicts == 0
-                ? $"Analysis complete — no conflicts in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}"
-                : $"Analysis complete — {summary.TotalConflicts} conflict(s) in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}";
+            var bosSuffix = bosFileCount > 0
+                ? $"  BOS: {bosFileCount} file(s), {bosSummary.TotalConflicts} conflict(s)."
+                : string.Empty;
+            var totalConflicts = summary.TotalConflicts + bosSummary.TotalConflicts;
+            StatusTextBlock.Text = totalConflicts == 0
+                ? $"Analysis complete — no conflicts in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}{bosSuffix}"
+                : $"Analysis complete — {totalConflicts} conflict(s) in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}{bosSuffix}";
         }
         catch (Exception ex)
         {
@@ -316,10 +333,11 @@ public partial class MainWindow : Window
         s.AppearanceConflicts.Concat(s.SkinConflicts).Concat(s.OutfitDefaultConflicts)
          .Concat(s.SpellConflicts).Concat(s.PerkConflicts);
 
-    private void DisplayResults(ConflictSummary summary)
+    private void DisplayResults(ConflictSummary summary, BosConflictSummary bosSummary)
     {
         SkyPatcherFilesText.Text = summary.TotalFilesScanned.ToString();
         SpidFilesText.Text       = _lastSpidFileCount.ToString();
+        BosFilesText.Text        = _lastBosFileCount.ToString();
         NpcDbRecordsText.Text    = $"{_lastDbRecordCount:N0}";
 
         AppearanceSummaryText.Text = SummaryLine(summary.AppearanceConflicts.Count);
@@ -327,15 +345,18 @@ public partial class MainWindow : Window
         OutfitSummaryText.Text     = SummaryLine(summary.OutfitDefaultConflicts.Count);
         SpellSummaryText.Text      = SummaryLine(summary.SpellConflicts.Count);
         PerkSummaryText.Text       = SummaryLine(summary.PerkConflicts.Count);
+        BosSummaryText.Text        = BosSummaryLine(bosSummary.TotalConflicts);
 
+        var totalAll    = summary.TotalConflicts + bosSummary.TotalConflicts;
         var activeTypes = (summary.AppearanceConflicts.Count    > 0 ? 1 : 0)
                         + (summary.SkinConflicts.Count          > 0 ? 1 : 0)
                         + (summary.OutfitDefaultConflicts.Count > 0 ? 1 : 0)
                         + (summary.SpellConflicts.Count         > 0 ? 1 : 0)
-                        + (summary.PerkConflicts.Count          > 0 ? 1 : 0);
-        TotalSummaryText.Text = summary.TotalConflicts == 0
+                        + (summary.PerkConflicts.Count          > 0 ? 1 : 0)
+                        + (bosSummary.TotalConflicts            > 0 ? 1 : 0);
+        TotalSummaryText.Text = totalAll == 0
             ? "No conflicts detected"
-            : $"{summary.TotalConflicts} conflict(s) across {activeTypes} type(s)";
+            : $"{totalAll} conflict(s) across {activeTypes} type(s)";
 
         ReportPlaceholderText.Visibility = Visibility.Collapsed;
         ReportSummaryPanel.Visibility    = Visibility.Visible;
@@ -344,14 +365,20 @@ public partial class MainWindow : Window
     private static string SummaryLine(int count) =>
         count == 0 ? "No conflicts" : $"{count} NPC(s) affected";
 
+    private static string BosSummaryLine(int count) =>
+        count == 0 ? "No conflicts" : $"{count} object(s) affected";
+
     private void ClearResults()
     {
         ReportSummaryPanel.Visibility    = Visibility.Collapsed;
         ReportPlaceholderText.Visibility = Visibility.Visible;
         ExportReportButton.IsEnabled = false;
         NpcConflictViewControl.Clear();
+        BosConflictViewControl.Clear();
         _lastSummary       = null;
+        _lastBosSummary    = null;
         _lastSpidFileCount = 0;
+        _lastBosFileCount  = 0;
         _lastDbRecordCount = 0;
     }
 
@@ -374,7 +401,7 @@ public partial class MainWindow : Window
         if (_lastSummary is null) return;
         try
         {
-            var report    = BuildTextReport(_lastSummary);
+            var report    = BuildTextReport(_lastSummary, _lastBosSummary);
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
             var filename  = $"SkyScope_Report_{timestamp}.txt";
             var filepath  = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, filename);
@@ -389,22 +416,47 @@ public partial class MainWindow : Window
         }
     }
 
-    private string BuildTextReport(ConflictSummary summary)
+    private string BuildTextReport(ConflictSummary summary, BosConflictSummary? bosSummary)
     {
         var sb = new StringBuilder();
         sb.AppendLine("=== SkyScope Conflict Report ===");
         sb.AppendLine($"Generated:              {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"SkyPatcher files:       {summary.TotalFilesScanned}");
         sb.AppendLine($"SPID files:             {_lastSpidFileCount}");
+        sb.AppendLine($"BOS files:              {_lastBosFileCount}");
         sb.AppendLine($"NPC database records:   {_lastDbRecordCount:N0}");
-        sb.AppendLine($"Total conflicts:        {summary.TotalConflicts}");
+        sb.AppendLine($"Total conflicts:        {summary.TotalConflicts + (bosSummary?.TotalConflicts ?? 0)}");
         sb.AppendLine();
         AppendSection(sb, "Appearance Conflicts (copyVisualStyle)",           summary.AppearanceConflicts);
         AppendSection(sb, "Skin Conflicts (skin)",                             summary.SkinConflicts);
         AppendSection(sb, "Default Outfit Conflicts (outfitDefault)",          summary.OutfitDefaultConflicts);
         AppendSection(sb, "Spell Conflicts (spellsToAdd / SPID Spell=)",       summary.SpellConflicts);
         AppendSection(sb, "Perk Conflicts (perksToAdd / SPID Perk=)",          summary.PerkConflicts);
+        if (bosSummary != null) AppendBosSection(sb, bosSummary);
         return sb.ToString();
+    }
+
+    private static void AppendBosSection(StringBuilder sb, BosConflictSummary bosSummary)
+    {
+        sb.AppendLine($"--- Base Object Swap Conflicts (*_SWAP.ini) ({bosSummary.TotalConflicts}) ---");
+        if (bosSummary.TotalConflicts == 0)
+        {
+            sb.AppendLine("  None");
+        }
+        else
+        {
+            foreach (var entry in bosSummary.SwapConflicts)
+            {
+                sb.AppendLine($"  {entry.DisplayName}");
+                var winner = entry.Sources.Count > 0
+                    ? Path.GetFileName(entry.Sources[entry.Sources.Count - 1].FilePath)
+                    : "?";
+                sb.AppendLine($"    Winner (alphabetical): {winner}");
+                foreach (var src in entry.Sources)
+                    sb.AppendLine($"    - {src.FilePath}  →  {src.SwapTarget}");
+            }
+        }
+        sb.AppendLine();
     }
 
     private static void AppendSection(StringBuilder sb, string title, List<ConflictEntry> entries)

@@ -1,0 +1,165 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Green action button (Make Winner, primary actions) -->
+    <Style x:Key="ConflictPrimaryButton" TargetType="Button">
+        <Setter Property="Background"       Value="#A3BE8C"/>
+        <Setter Property="Foreground"       Value="#2E3440"/>
+        <Setter Property="FontWeight"       Value="SemiBold"/>
+        <Setter Property="FontSize"         Value="11"/>
+        <Setter Property="BorderThickness"  Value="0"/>
+        <Setter Property="Cursor"           Value="Hand"/>
+        <Setter Property="Padding"          Value="10,5"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="3"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#B5CEA0"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Blue accent button (Open File, secondary actions) -->
+    <Style x:Key="ConflictAccentButton" TargetType="Button" BasedOn="{StaticResource ConflictPrimaryButton}">
+        <Setter Property="Background" Value="#5E81AC"/>
+        <Setter Property="Foreground" Value="#ECEFF4"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#7090BC"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Red danger button (Remove) -->
+    <Style x:Key="ConflictDangerButton" TargetType="Button" BasedOn="{StaticResource ConflictPrimaryButton}">
+        <Setter Property="Background" Value="#BF616A"/>
+        <Setter Property="Foreground" Value="#ECEFF4"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#CF7177"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Accordion header button: transparent background, hover highlight -->
+    <Style x:Key="ConflictHeaderButton" TargetType="Button">
+        <Setter Property="Background"               Value="Transparent"/>
+        <Setter Property="BorderThickness"          Value="0"/>
+        <Setter Property="Cursor"                   Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Padding"                  Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4,4,0,0">
+                        <ContentPresenter HorizontalAlignment="Stretch"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#434C5E"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Outer card wrapping each conflict item -->
+    <Style x:Key="ConflictItemContainer" TargetType="Border">
+        <Setter Property="Background"   Value="#3B4252"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Margin"       Value="0,0,0,4"/>
+    </Style>
+
+    <!-- Inner card for each source entry, with winner tinge and hover highlight -->
+    <Style x:Key="ConflictSourceCard" TargetType="Border">
+        <Setter Property="Background"   Value="#434C5E"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Margin"       Value="0,0,0,4"/>
+        <Setter Property="Padding"      Value="10,8"/>
+        <Style.Triggers>
+            <!-- Winner: shift from blue-gray to green-gray to complement the WINS badge -->
+            <DataTrigger Binding="{Binding IsWinner}" Value="True">
+                <Setter Property="Background" Value="#3F4E40"/>
+            </DataTrigger>
+            <!-- Hover overrides both normal and winner backgrounds -->
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#4E5A6E"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Toggle checkbox used for optional filters (e.g. Show <100% SPID conflicts) -->
+    <Style x:Key="FilterToggleStyle" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="#8C9BB5"/>
+        <Setter Property="FontSize"   Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor"     Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="Bd" Background="#4C566A" CornerRadius="3" Padding="8,4">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#5E81AC"/>
+                            <Setter Property="Foreground" Value="#ECEFF4"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#5A6478"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+        Accordion panel driven by IsExpanded on the DataContext.
+        Uses explicit From/To values and FillBehavior=Stop so animation clocks
+        never read a potentially-invalid base value after container recycling.
+    -->
+    <Style x:Key="ConflictAccordionPanel" TargetType="Border">
+        <Setter Property="ClipToBounds" Value="True"/>
+        <Setter Property="MaxHeight"    Value="0"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                <Setter Property="MaxHeight" Value="3000"/>
+                <DataTrigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard FillBehavior="Stop">
+                            <DoubleAnimation Storyboard.TargetProperty="MaxHeight"
+                                             From="0" To="3000" Duration="0:0:0.2">
+                                <DoubleAnimation.EasingFunction>
+                                    <QuadraticEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </DataTrigger.EnterActions>
+                <DataTrigger.ExitActions>
+                    <BeginStoryboard>
+                        <Storyboard FillBehavior="Stop">
+                            <DoubleAnimation Storyboard.TargetProperty="MaxHeight"
+                                             From="3000" To="0" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <QuadraticEase EasingMode="EaseIn"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </DataTrigger.ExitActions>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+</ResourceDictionary>

@@ -8,13 +8,12 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Threading;
 using SkyScope.Core;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
 
-public partial class NpcConflictView : UserControl
+public partial class NpcConflictView : ConflictViewBase
 {
     private List<NpcConflictViewModel> _allNpcs = new();
     private ConflictSummary?  _lastSummary;
@@ -24,10 +23,7 @@ public partial class NpcConflictView : UserControl
     private bool _filterO  = true;
     private bool _filterSp = true;
     private bool _filterP  = true;
-    private DispatcherTimer? _searchDebounce;
 
-    // Persistent source — never replaced, only updated in-place so WPF containers
-    // are not torn down while accordion animations may be running.
     private readonly ObservableCollection<NpcConflictViewModel> _npcListSource = new();
 
     public NpcConflictView()
@@ -112,6 +108,7 @@ public partial class NpcConflictView : UserControl
                 .ToList();
             var winner = sorted.Count > 0 ? sorted[sorted.Count - 1] : null;
 
+            bool isAdditive = ruleType is RuleType.Spell or RuleType.Perk;
             var group = new NpcConflictGroup
             {
                 RuleType   = ruleType,
@@ -120,7 +117,6 @@ public partial class NpcConflictView : UserControl
                 Parent     = vm
             };
 
-            bool isAdditive = ruleType is RuleType.Spell or RuleType.Perk;
             group.Sources = new ObservableCollection<NpcTabSourceViewModel>(
                 sorted.Select((src, idx) => new NpcTabSourceViewModel
                 {
@@ -154,7 +150,6 @@ public partial class NpcConflictView : UserControl
             else if (ruleType == RuleType.OutfitDefault) vm.HasOutfit     = true;
             else if (ruleType == RuleType.Spell)         vm.HasSpell      = true;
             else if (ruleType == RuleType.Perk)          vm.HasPerk       = true;
-
         }
     }
 
@@ -176,8 +171,6 @@ public partial class NpcConflictView : UserControl
     {
         var search = SearchBox.Text.Trim();
 
-        // Stage 1: compute FilteredGroups for every NPC so the accordion only
-        // shows groups that match the active type filters.
         foreach (var vm in _allNpcs)
         {
             vm.FilteredGroups = vm.Groups.Where(g =>
@@ -189,8 +182,6 @@ public partial class NpcConflictView : UserControl
             ).ToList();
         }
 
-        // Stage 2: only show NPCs that have at least one visible group and
-        // match the search text.
         var visible = _allNpcs.Where(vm =>
         {
             if (vm.FilteredGroups.Count == 0) return false;
@@ -199,41 +190,7 @@ public partial class NpcConflictView : UserControl
                 || vm.SubText.Contains(search, StringComparison.OrdinalIgnoreCase);
         }).ToList();
 
-        // Sync the persistent ObservableCollection in-place so WPF does not destroy
-        // and recreate containers while accordion animations may be running.
-        // visible is already sorted; _npcListSource is kept in the same order.
-        var visibleSet = new HashSet<NpcConflictViewModel>(visible, ReferenceEqualityComparer.Instance);
-
-        for (int i = _npcListSource.Count - 1; i >= 0; i--)
-        {
-            if (!visibleSet.Contains(_npcListSource[i]))
-            {
-                // Collapse before removal so the VM is in a clean state if it is
-                // re-inserted later — a new container with IsExpanded=true would
-                // immediately fire the expand animation before layout is complete.
-                _npcListSource[i].IsExpanded = false;
-                _npcListSource.RemoveAt(i);
-            }
-        }
-
-        for (int i = 0; i < visible.Count; i++)
-        {
-            var vm = visible[i];
-            if (i >= _npcListSource.Count)
-            {
-                _npcListSource.Add(vm);
-            }
-            else if (!ReferenceEquals(_npcListSource[i], vm))
-            {
-                var existing = -1;
-                for (int j = i + 1; j < _npcListSource.Count; j++)
-                    if (ReferenceEquals(_npcListSource[j], vm)) { existing = j; break; }
-                if (existing >= 0)
-                    _npcListSource.Move(existing, i);
-                else
-                    _npcListSource.Insert(i, vm);
-            }
-        }
+        SyncList(_npcListSource, visible, vm => vm.IsExpanded = false);
 
         NpcCountText.Text = $"{visible.Count} NPC{(visible.Count == 1 ? "" : "s")}";
 
@@ -253,26 +210,8 @@ public partial class NpcConflictView : UserControl
         }
     }
 
-    private void NpcHeader_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.Tag is NpcConflictViewModel vm)
-            vm.IsExpanded = !vm.IsExpanded;
-    }
-
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_searchDebounce == null)
-        {
-            _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
-            _searchDebounce.Tick += (_, _) =>
-            {
-                _searchDebounce.Stop();
-                if (_allNpcs.Count > 0) ApplyFilter();
-            };
-        }
-        _searchDebounce.Stop();
-        _searchDebounce.Start();
-    }
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
+        StartSearchDebounce(ApplyFilter, () => _allNpcs.Count > 0);
 
     private void FilterA_Click(object sender, RoutedEventArgs e)
     {
@@ -430,25 +369,9 @@ public partial class NpcConflictView : UserControl
             }
         }
     }
-
-    private void OpenFile_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button btn) return;
-        if (btn.Tag is not NpcTabSourceViewModel src) return;
-        try
-        {
-            System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo(src.FilePath) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Could not open file:\n\n{ex.Message}", "SkyScope — Open File",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
 }
 
-public class NpcConflictViewModel : INotifyPropertyChanged
+public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
 {
     public string DisplayName           { get; set; } = "";
     public string SubText               { get; set; } = "";
@@ -457,39 +380,19 @@ public class NpcConflictViewModel : INotifyPropertyChanged
     public ObservableCollection<NpcConflictGroup> Groups { get; } = new();
 
     private bool _hasAppearance;
-    public bool HasAppearance
-    {
-        get => _hasAppearance;
-        set { _hasAppearance = value; OnPropertyChanged(); }
-    }
+    public bool HasAppearance { get => _hasAppearance; set { _hasAppearance = value; OnPropertyChanged(); } }
 
     private bool _hasSkin;
-    public bool HasSkin
-    {
-        get => _hasSkin;
-        set { _hasSkin = value; OnPropertyChanged(); }
-    }
+    public bool HasSkin { get => _hasSkin; set { _hasSkin = value; OnPropertyChanged(); } }
 
     private bool _hasOutfit;
-    public bool HasOutfit
-    {
-        get => _hasOutfit;
-        set { _hasOutfit = value; OnPropertyChanged(); }
-    }
+    public bool HasOutfit { get => _hasOutfit; set { _hasOutfit = value; OnPropertyChanged(); } }
 
     private bool _hasSpell;
-    public bool HasSpell
-    {
-        get => _hasSpell;
-        set { _hasSpell = value; OnPropertyChanged(); }
-    }
+    public bool HasSpell { get => _hasSpell; set { _hasSpell = value; OnPropertyChanged(); } }
 
     private bool _hasPerk;
-    public bool HasPerk
-    {
-        get => _hasPerk;
-        set { _hasPerk = value; OnPropertyChanged(); }
-    }
+    public bool HasPerk { get => _hasPerk; set { _hasPerk = value; OnPropertyChanged(); } }
 
     private List<NpcConflictGroup> _filteredGroups = new();
     public List<NpcConflictGroup> FilteredGroups
@@ -499,11 +402,7 @@ public class NpcConflictViewModel : INotifyPropertyChanged
     }
 
     private bool _isExpanded;
-    public bool IsExpanded
-    {
-        get => _isExpanded;
-        set { _isExpanded = value; OnPropertyChanged(); }
-    }
+    public bool IsExpanded { get => _isExpanded; set { _isExpanded = value; OnPropertyChanged(); } }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? name = null)
@@ -519,37 +418,33 @@ public class NpcConflictGroup
     public NpcConflictViewModel?                       Parent     { get; set;  }
 }
 
-public class NpcTabSourceViewModel : INotifyPropertyChanged
+public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
 {
-    public string  FileName          { get; init; } = "";
-    public string  FilePath          { get; init; } = "";
-    public int     LineNumber        { get; init; }
-    public string  ConflictLineText  { get; init; } = "";
-    public string? PrecedingLine     { get; init; }
-    public string? FollowingLine     { get; init; }
-    public int     LoadPosition      { get; init; }
-    public int     TotalSources      { get; init; }
-    public string  RuleValue            { get; init; } = "";
-    public string  ResolvedRuleDisplay  { get; init; } = "";
-    public bool    IsAdditive           { get; init; }
-    public string  SourceTool           { get; init; } = "SkyPatcher";
-    public int?    SpidChance        { get; init; }
-    public string? SpidNpcIdentifier { get; init; }
-    public NpcConflictGroup? Group   { get; set;  }
+    public string  FileName            { get; init; } = "";
+    public string  FilePath            { get; init; } = "";
+    public int     LineNumber          { get; init; }
+    public string  ConflictLineText    { get; init; } = "";
+    public string? PrecedingLine       { get; init; }
+    public string? FollowingLine       { get; init; }
+    public int     LoadPosition        { get; init; }
+    public int     TotalSources        { get; init; }
+    public string  RuleValue           { get; init; } = "";
+    public string  ResolvedRuleDisplay { get; init; } = "";
+    public bool    IsAdditive          { get; init; }
+    public string  SourceTool          { get; init; } = "SkyPatcher";
+    public int?    SpidChance          { get; init; }
+    public string? SpidNpcIdentifier   { get; init; }
+    public NpcConflictGroup? Group     { get; set;  }
 
-    public bool   IsSpid             => SourceTool == "SPID";
-    public string SpidBadgeText      => SpidChance.HasValue ? $"SPID  {SpidChance.Value}%" : "SPID";
-    public int    PrecedingLineNumber => LineNumber - 1;
-    public int    FollowingLineNumber => LineNumber + 1;
-    public bool   HasPrecedingLine    => !string.IsNullOrEmpty(PrecedingLine);
-    public bool   HasFollowingLine    => !string.IsNullOrEmpty(FollowingLine);
+    public bool   IsSpid              => SourceTool == "SPID";
+    public string SpidBadgeText       => SpidChance.HasValue ? $"SPID  {SpidChance.Value}%" : "SPID";
+    public int    PrecedingLineNumber  => LineNumber - 1;
+    public int    FollowingLineNumber  => LineNumber + 1;
+    public bool   HasPrecedingLine     => !string.IsNullOrEmpty(PrecedingLine);
+    public bool   HasFollowingLine     => !string.IsNullOrEmpty(FollowingLine);
 
     private bool _isWinner;
-    public bool IsWinner
-    {
-        get => _isWinner;
-        set { _isWinner = value; OnPropertyChanged(); }
-    }
+    public bool IsWinner { get => _isWinner; set { _isWinner = value; OnPropertyChanged(); } }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? name = null)
