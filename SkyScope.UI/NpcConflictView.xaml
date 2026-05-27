@@ -347,7 +347,7 @@
                                                                                         </Style.Triggers>
                                                                                     </Style>
                                                                                 </Border.Style>
-                                                                                <TextBlock Text="WINS" FontSize="9"
+                                                                                <TextBlock Text="WINNER" FontSize="9"
                                                                                            FontWeight="Bold" Foreground="#2E3440"/>
                                                                             </Border>
                                                                         </StackPanel>

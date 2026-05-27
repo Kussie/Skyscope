@@ -38,10 +38,10 @@ Once results are in, hover any row for a quick summary or double-click to open t
 ---
 
 ### Screenshots
-![Main window](<Screenshots/Screenshot 2026-05-26 100052.png>)
-![Conflict details tooltip](<Screenshots/Screenshot 2026-05-26 100100.png>)
-![Conflict details window](<Screenshots/Screenshot 2026-05-26 100110.png>)
-![Resolve conflict options](<Screenshots/Screenshot 2026-05-26 100322.png>)
+![alt text](<Screenshots/Screenshot 2026-05-27 204721.png>)
+![alt text](<Screenshots/Screenshot 2026-05-27 204730.png>)
+![alt text](<Screenshots/Screenshot 2026-05-27 204748.png>)
+![alt text](<Screenshots/Screenshot 2026-05-27 204803.png>)
 
 ---
 
