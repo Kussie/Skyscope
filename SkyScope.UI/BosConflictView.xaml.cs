@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using SkyScope.Core;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
@@ -15,6 +16,8 @@ public partial class BosConflictView : ConflictViewBase
 {
     private List<BosConflictViewModel> _allConflicts = new();
     private readonly ObservableCollection<BosConflictViewModel> _listSource = new();
+
+    public HistoryStore? HistoryStore { get; set; }
 
     public BosConflictView()
     {
@@ -120,11 +123,15 @@ public partial class BosConflictView : ConflictViewBase
         var errors   = new List<string>();
         int modified = 0;
 
+        var description = $"{vm.DisplayName} — BOS swap conflict";
+
         foreach (var src in toComment)
         {
             try
             {
-                ConflictResolutionHelper.CommentOutLine(src.FilePath, src.LineNumber, src.LineText);
+                ConflictResolutionHelper.CommentOutLine(
+                    src.FilePath, src.LineNumber, src.LineText,
+                    description, "BOS", HistoryStore);
                 modified++;
             }
             catch (Exception ex)

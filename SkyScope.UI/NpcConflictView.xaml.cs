@@ -18,6 +18,8 @@ public partial class NpcConflictView : ConflictViewBase
     private List<NpcConflictViewModel> _allNpcs = new();
     private ConflictSummary?  _lastSummary;
     private FormNameDatabase? _formDb;
+
+    public HistoryStore? HistoryStore { get; set; }
     private bool _filterA  = true;
     private bool _filterS  = true;
     private bool _filterO  = true;
@@ -275,16 +277,21 @@ public partial class NpcConflictView : ConflictViewBase
         var errors   = new List<string>();
         int modified = 0;
 
+        var description = $"{group.Parent?.DisplayName ?? "NPC"} — {group.Label} conflict";
+        var tool        = (NpcTabSourceViewModel s) => s.IsSpid ? "SPID" : "SkyPatcher";
+
         foreach (var src in toComment)
         {
             try
             {
                 if (src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier))
                     ConflictResolutionHelper.RemoveNpcFromSpidLine(
-                        src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier);
+                        src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
+                        description, tool(src), HistoryStore);
                 else
                     ConflictResolutionHelper.CommentOutLine(
-                        src.FilePath, src.LineNumber, src.ConflictLineText);
+                        src.FilePath, src.LineNumber, src.ConflictLineText,
+                        description, tool(src), HistoryStore);
                 modified++;
             }
             catch (Exception ex)
@@ -331,14 +338,19 @@ public partial class NpcConflictView : ConflictViewBase
         var group = src.Group;
         if (group == null) return;
 
+        var removeDescription = $"{group.Parent?.DisplayName ?? "NPC"} — {group.Label} conflict";
+        var removeTool        = src.IsSpid ? "SPID" : "SkyPatcher";
+
         try
         {
             if (src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier))
                 ConflictResolutionHelper.RemoveNpcFromSpidLine(
-                    src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier);
+                    src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
+                    removeDescription, removeTool, HistoryStore);
             else
                 ConflictResolutionHelper.CommentOutLine(
-                    src.FilePath, src.LineNumber, src.ConflictLineText);
+                    src.FilePath, src.LineNumber, src.ConflictLineText,
+                    removeDescription, removeTool, HistoryStore);
         }
         catch (Exception ex)
         {

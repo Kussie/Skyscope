@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SkyScope.Core;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
@@ -39,7 +40,10 @@ public static class ConflictResolutionHelper
         return result;
     }
 
-    public static void CommentOutLine(string filePath, int lineNumber, string capturedText)
+    public static void CommentOutLine(
+        string filePath, int lineNumber, string capturedText,
+        string conflictDescription = "", string sourceTool = "",
+        HistoryStore? history = null)
     {
         var lines = File.ReadAllLines(filePath);
         var idx   = lineNumber - 1;
@@ -53,14 +57,33 @@ public static class ConflictResolutionHelper
         if (lines[idx].TrimStart().StartsWith(";"))
             return;
 
+        var record = new ChangeRecord
+        {
+            Modification        = ModificationType.LineCommented,
+            FilePath            = filePath,
+            OriginalLineNumber  = lineNumber,
+            OriginalLine        = lines[idx],
+            ConflictDescription = conflictDescription,
+            SourceTool          = sourceTool
+        };
+
+        var commentLine    = $"; SkyScope [{record.ChangeCode}]: Rule commented out - {conflictDescription}".TrimEnd(' ', '-');
+        var commentedLine  = ";" + lines[idx];
+
+        record.ReplacementLines = new List<string> { commentLine, commentedLine };
+
         var updated = new List<string>(lines);
-        updated.Insert(idx, "; Rule commented out by SkyScope");
-        updated[idx + 1] = ";" + updated[idx + 1];
+        updated.Insert(idx, commentLine);
+        updated[idx + 1] = commentedLine;
 
         File.WriteAllLines(filePath, updated);
+        history?.Add(record);
     }
 
-    public static void RemoveNpcFromSpidLine(string filePath, int lineNumber, string capturedText, string npcIdentifier)
+    public static void RemoveNpcFromSpidLine(
+        string filePath, int lineNumber, string capturedText, string npcIdentifier,
+        string conflictDescription = "", string sourceTool = "",
+        HistoryStore? history = null)
     {
         var lines = File.ReadAllLines(filePath);
         var idx   = lineNumber - 1;
@@ -78,10 +101,7 @@ public static class ConflictResolutionHelper
         var eqIdx = line.IndexOf('=');
         if (eqIdx < 0)
         {
-            var fallback = new List<string>(lines);
-            fallback.Insert(idx, "; Rule commented out by SkyScope");
-            fallback[idx + 1] = ";" + fallback[idx + 1];
-            File.WriteAllLines(filePath, fallback);
+            WriteCommentOut(filePath, lines, idx, line, conflictDescription, history);
             return;
         }
 
@@ -119,13 +139,9 @@ public static class ConflictResolutionHelper
             anyRemoved |= r;
         }
 
-        var updated = new List<string>(lines);
-
         if (!anyRemoved)
         {
-            updated.Insert(idx, "; Rule commented out by SkyScope");
-            updated[idx + 1] = ";" + updated[idx + 1];
-            File.WriteAllLines(filePath, updated);
+            WriteCommentOut(filePath, lines, idx, line, conflictDescription, history);
             return;
         }
 
@@ -134,16 +150,102 @@ public static class ConflictResolutionHelper
 
         if (!npcsRemain)
         {
-            updated.Insert(idx, $"; {npcIdentifier} was the only target — rule commented out by SkyScope");
-            updated[idx + 1] = ";" + updated[idx + 1];
-            File.WriteAllLines(filePath, updated);
+            WriteCommentOut(filePath, lines, idx, line, conflictDescription, history);
             return;
         }
 
+        // Rule survives with the NPC removed — Type 2 modification.
+        var record = new ChangeRecord
+        {
+            Modification        = ModificationType.RuleModified,
+            FilePath            = filePath,
+            OriginalLineNumber  = lineNumber,
+            OriginalLine        = line,
+            ConflictDescription = conflictDescription,
+            SourceTool          = sourceTool
+        };
+
         var indent  = line.Length - line.TrimStart().Length;
         var newLine = new string(' ', indent) + prefix + " " + string.Join("|", fields);
-        updated.Insert(idx, $"{new string(' ', indent)}; {npcIdentifier} removed from rule to resolve a conflict by SkyScope");
+        var commentLine = $"{new string(' ', indent)}; SkyScope [{record.ChangeCode}]: Rule modified - {conflictDescription}".TrimEnd(' ', '-');
+
+        record.ReplacementLines = new List<string> { commentLine, newLine };
+
+        var updated = new List<string>(lines);
+        updated.Insert(idx, commentLine);
         updated[idx + 1] = newLine;
         File.WriteAllLines(filePath, updated);
+        history?.Add(record);
+    }
+
+    // Type 3: split one rule into multiple active rules (for future use).
+    public static void SplitRule(
+        string filePath, int lineNumber, string capturedText,
+        List<string> newRules, string conflictDescription = "", string sourceTool = "",
+        HistoryStore? history = null)
+    {
+        var lines = File.ReadAllLines(filePath);
+        var idx   = lineNumber - 1;
+
+        if (idx < 0 || idx >= lines.Length)
+            throw new InvalidOperationException($"Line {lineNumber} no longer exists in the file.");
+
+        if (!string.Equals(lines[idx].Trim(), capturedText.Trim(), StringComparison.Ordinal))
+            throw new InvalidOperationException($"Line {lineNumber} has changed since the last analysis — re-run analysis first.");
+
+        var record = new ChangeRecord
+        {
+            Modification        = ModificationType.RuleSplit,
+            FilePath            = filePath,
+            OriginalLineNumber  = lineNumber,
+            OriginalLine        = lines[idx],
+            ConflictDescription = conflictDescription,
+            SourceTool          = sourceTool
+        };
+
+        var code        = record.ChangeCode;
+        var desc        = string.IsNullOrEmpty(conflictDescription) ? "" : $" - {conflictDescription}";
+        var origComment = $"; SkyScope [{code}]: Original rule: {lines[idx]}";
+        var startMarker = $"; SkyScope [{code}]: Rule modification start{desc}";
+        var endMarker   = $"; SkyScope [{code}]: Rule modification end";
+
+        var replacement = new List<string> { origComment, startMarker };
+        replacement.AddRange(newRules);
+        replacement.Add(endMarker);
+        record.ReplacementLines = replacement;
+
+        var updated = new List<string>(lines);
+        updated.RemoveAt(idx);
+        updated.InsertRange(idx, replacement);
+
+        File.WriteAllLines(filePath, updated);
+        history?.Add(record);
+    }
+
+    // Helper: comment out a line with Type 1 format and record to history.
+    private static void WriteCommentOut(
+        string filePath, string[] lines, int idx, string originalLine,
+        string conflictDescription, HistoryStore? history)
+    {
+        var record = new ChangeRecord
+        {
+            Modification        = ModificationType.LineCommented,
+            FilePath            = filePath,
+            OriginalLineNumber  = idx + 1,
+            OriginalLine        = originalLine,
+            ConflictDescription = conflictDescription
+        };
+
+        var commentLine   = $"; SkyScope [{record.ChangeCode}]: Rule commented out - {conflictDescription}".TrimEnd(' ', '-');
+        var commentedLine = ";" + originalLine;
+
+        record.ReplacementLines = new List<string> { commentLine, commentedLine };
+
+        var updated = new List<string>(lines);
+        updated.Insert(idx, commentLine);
+        updated[idx + 1] = commentedLine;
+
+        File.WriteAllLines(filePath, updated);
+        history?.Add(record);
     }
 }

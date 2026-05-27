@@ -162,4 +162,11 @@
         </Style.Triggers>
     </Style>
 
+
+    <!-- Diff colours — used by HistoryView for inline diff and before/after panels -->
+    <SolidColorBrush x:Key="DiffRemovedBackground" Color="#3B1F1F"/>
+    <SolidColorBrush x:Key="DiffRemovedForeground" Color="#BF6060"/>
+    <SolidColorBrush x:Key="DiffAddedBackground"   Color="#1E3020"/>
+    <SolidColorBrush x:Key="DiffAddedForeground"   Color="#7EC077"/>
+
 </ResourceDictionary>

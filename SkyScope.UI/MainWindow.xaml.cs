@@ -23,9 +23,15 @@ public partial class MainWindow : Window
     private int _lastDbRecordCount;
     private const string SettingsFileName = "skyscope_settings.txt";
 
+    private readonly HistoryStore _historyStore = new();
+
     public MainWindow()
     {
         InitializeComponent();
+        _historyStore.Load();
+        NpcConflictViewControl.HistoryStore = _historyStore;
+        BosConflictViewControl.HistoryStore = _historyStore;
+        HistoryViewControl.Refresh(_historyStore);
         LoadSettings();
     }
 
@@ -387,7 +393,11 @@ public partial class MainWindow : Window
         try
         {
             var settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
-            File.WriteAllLines(settingsPath, new[] { $"SkyrimPath:{SkyrimPathTextBox.Text}" });
+            File.WriteAllLines(settingsPath, new[]
+            {
+                $"SkyrimPath:{SkyrimPathTextBox.Text}",
+                $"HistoryDiffMode:{HistoryViewControl.DiffMode}"
+            });
             StatusTextBlock.Text = "Settings saved.";
         }
         catch (Exception ex)
@@ -510,6 +520,12 @@ public partial class MainWindow : Window
                     var saved = line["SkyrimPath:".Length..];
                     if (!string.IsNullOrEmpty(saved))
                         SkyrimPathTextBox.Text = saved;
+                }
+                else if (line.StartsWith("HistoryDiffMode:"))
+                {
+                    var mode = line["HistoryDiffMode:".Length..];
+                    if (Enum.TryParse<DiffMode>(mode, out var diffMode))
+                        HistoryViewControl.DiffMode = diffMode;
                 }
             }
         }

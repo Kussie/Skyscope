@@ -471,6 +471,12 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="History">
+                <Grid Margin="16">
+                    <local:HistoryView x:Name="HistoryViewControl"/>
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
         <!-- Footer -->
