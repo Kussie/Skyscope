@@ -16,8 +16,8 @@ namespace SkyScope.UI;
 public partial class NpcConflictView : ConflictViewBase
 {
     private List<NpcConflictViewModel> _allNpcs = new();
-    private ConflictSummary?  _lastSummary;
-    private FormNameDatabase? _formDb;
+    private ConflictSummary?      _lastSummary;
+    private ModReferenceLibrary?  _library;
 
     public HistoryStore? HistoryStore { get; set; }
     private bool _filterA  = true;
@@ -34,9 +34,9 @@ public partial class NpcConflictView : ConflictViewBase
         NpcList.ItemsSource = _npcListSource;
     }
 
-    public void Populate(ConflictSummary summary, FormNameDatabase? formDb = null)
+    public void Populate(ConflictSummary summary, ModReferenceLibrary? library = null)
     {
-        if (formDb != null) _formDb = formDb;
+        if (library != null) _library = library;
         _lastSummary = summary;
 
         foreach (var vm in _allNpcs)
@@ -48,8 +48,8 @@ public partial class NpcConflictView : ConflictViewBase
         AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush("#EBCB8B"), null);
         AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush("#D08770"), null);
         AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush("#B48EAD"), null);
-        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush("#A3BE8C"), _formDb);
-        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush("#BF616A"), _formDb);
+        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush("#A3BE8C"), _library);
+        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush("#BF616A"), _library);
 
         foreach (var vm in dict.Values)
         {
@@ -85,7 +85,7 @@ public partial class NpcConflictView : ConflictViewBase
         RuleType ruleType,
         string label,
         SolidColorBrush badgeBrush,
-        FormNameDatabase? formDb)
+        ModReferenceLibrary? library)
     {
         foreach (var entry in entries)
         {
@@ -131,8 +131,8 @@ public partial class NpcConflictView : ConflictViewBase
                     LoadPosition        = idx + 1,
                     TotalSources        = sorted.Count,
                     RuleValue           = src.RuleValue,
-                    ResolvedRuleDisplay = formDb != null
-                                         ? formDb.ResolveRuleValue(src.RuleValue)
+                    ResolvedRuleDisplay = library != null
+                                         ? library.ResolveRuleValue(src.RuleValue)
                                          : src.RuleValue,
                     SourceTool          = src.SourceTool,
                     SpidChance          = src.SpidChance,

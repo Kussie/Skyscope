@@ -75,6 +75,8 @@ public partial class MainWindow : Window
 
         try
         {
+            // ── Step 1: Parse all config files (no plugin I/O) ─────────────
+
             StatusTextBlock.Text = "Scanning SkyPatcher configs…";
 
             List<ModConfiguration> configs;
@@ -96,20 +98,30 @@ public partial class MainWindow : Window
                 return;
             }
 
-            StatusTextBlock.Text = $"Found {configs.Count} INI file(s). Loading NPC database…";
-            var progress = new Progress<string>(msg => StatusTextBlock.Text = msg);
-            var db       = new NpcNameDatabase();
-            await Task.Run(() => db.Load(skyrimPath, progress));
-
-            StatusTextBlock.Text = "Loading Spell/Perk name database…";
-            var formDb = new FormNameDatabase();
-            await Task.Run(() => formDb.Load(skyrimPath, progress));
-
             StatusTextBlock.Text = "Scanning SPID distribution files…";
             var (spidRules, spidFileCount) = await Task.Run(() =>
                 new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
 
-            // Bundle SPID spell/perk rules alongside SkyPatcher configs for unified detection
+            StatusTextBlock.Text = "Scanning Base Object Swapper files…";
+            var (bosRules, bosFileCount) = await Task.Run(() =>
+                new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+
+            // ── Step 2: Build reference library from parsed rules ───────────
+
+            StatusTextBlock.Text = "Building reference library…";
+            var loadedPlugins = await Task.Run(() => PluginPathResolver.GetOrderedPluginNames(skyrimPath));
+            var library       = new ModReferenceLibrary();
+            library.SetLoadedPlugins(loadedPlugins);
+            await Task.Run(() => new ReferenceExtractor().Extract(library, configs, spidRules, bosRules));
+
+            // ── Step 3: Enrich library from plugin files ────────────────────
+
+            var progress = new Progress<string>(msg => StatusTextBlock.Text = msg);
+            await Task.Run(() => new PluginEnricher().Enrich(library, skyrimPath, progress));
+            _lastDbRecordCount = library.NpcRecordCount;
+
+            // ── Step 4: Bundle SPID rules + filter inactive spell/perk ──────
+
             var spidSpellPerkConfigs = spidRules
                 .Where(r => r.RuleType is RuleType.Spell or RuleType.Perk)
                 .GroupBy(r => r.SourceFile, StringComparer.OrdinalIgnoreCase)
@@ -123,53 +135,47 @@ public partial class MainWindow : Window
 
             var allConfigs = configs.Concat(spidSpellPerkConfigs).ToList();
 
-            // Drop spell/perk rules whose every form reference points to a plugin that is
-            // not in the current load order — those rules are inactive in-game.
             foreach (var config in allConfigs)
                 config.Rules.RemoveAll(r =>
                     (r.RuleType is RuleType.Spell or RuleType.Perk) &&
-                    !formDb.HasAnyLoadedPlugin(r.RuleValue));
+                    !library.HasAnyLoadedPlugin(r.RuleValue));
             allConfigs.RemoveAll(c => c.Rules.Count == 0);
+
+            // ── Step 5: Detect conflicts ────────────────────────────────────
 
             StatusTextBlock.Text = "Detecting conflicts…";
             var summary = await Task.Run(() =>
             {
-                var detector = new ConflictDetector();
-                var s = detector.DetectConflicts(allConfigs, db);
+                var s = new ConflictDetector().DetectConflicts(allConfigs, library);
                 s.TotalFilesScanned = configs.Count;
                 return s;
             });
 
-            await Task.Run(() => ResolveNames(summary, db));
+            await Task.Run(() => ResolveNames(summary, library));
 
             var spidOutfitRules = spidRules.Where(r => r.RuleType == RuleType.OutfitDefault).ToList();
             if (spidOutfitRules.Count > 0)
             {
                 StatusTextBlock.Text = $"Found {spidOutfitRules.Count} SPID outfit rule(s). Merging conflicts…";
-                await Task.Run(() => MergeSpidConflicts(summary, configs, spidOutfitRules, db));
+                await Task.Run(() => MergeSpidConflicts(summary, configs, spidOutfitRules, library));
             }
 
-            StatusTextBlock.Text = "Scanning Base Object Swapper files…";
-            var (bosRules, bosFileCount) = await Task.Run(() =>
-                new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
-
             var bosSummary = await Task.Run(() =>
-                new BosConflictDetector().DetectConflicts(bosRules));
+                new BosConflictDetector().DetectConflicts(bosRules, library));
             bosSummary.FilesScanned = bosFileCount;
 
-            _lastSpidFileCount      = spidFileCount;
-            _lastBosFileCount       = bosFileCount;
-            _lastDbRecordCount      = db.RecordCount;
+            _lastSpidFileCount       = spidFileCount;
+            _lastBosFileCount        = bosFileCount;
             _lastSkyPatcherRuleCount = configs.Sum(c => c.Rules.Count);
-            _lastSpidRuleCount      = spidRules.Count;
-            _lastBosRuleCount       = bosRules.Count;
-            _lastSummary            = summary;
-            _lastBosSummary         = bosSummary;
+            _lastSpidRuleCount       = spidRules.Count;
+            _lastBosRuleCount        = bosRules.Count;
+            _lastSummary             = summary;
+            _lastBosSummary          = bosSummary;
             DisplayResults(summary, bosSummary);
 
             if (App.VerboseMode)
                 WriteAnalysisLog(configs, spidRules, bosRules);
-            NpcConflictViewControl.Populate(summary, formDb);
+            NpcConflictViewControl.Populate(summary, library);
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;
 
@@ -182,8 +188,8 @@ public partial class MainWindow : Window
                 : string.Empty;
             var totalConflicts = summary.TotalConflicts + bosSummary.TotalConflicts;
             StatusTextBlock.Text = totalConflicts == 0
-                ? $"Analysis complete — no conflicts in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}{bosSuffix}"
-                : $"Analysis complete — {totalConflicts} conflict(s) in {configs.Count} SkyPatcher file(s).  NPC database: {db.RecordCount:N0} record(s).{spidSuffix}{bosSuffix}";
+                ? $"Analysis complete — no conflicts in {configs.Count} SkyPatcher file(s).  NPC database: {library.NpcRecordCount:N0} record(s).{spidSuffix}{bosSuffix}"
+                : $"Analysis complete — {totalConflicts} conflict(s) in {configs.Count} SkyPatcher file(s).  NPC database: {library.NpcRecordCount:N0} record(s).{spidSuffix}{bosSuffix}";
         }
         catch (Exception ex)
         {
@@ -197,18 +203,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void ResolveNames(ConflictSummary summary, NpcNameDatabase db)
+    private static void ResolveNames(ConflictSummary summary, ModReferenceLibrary library)
     {
         foreach (var entry in AllEntries(summary))
         {
             if (entry.NpcRef.RefType == NpcRefType.RecordId)
             {
-                entry.ResolvedName     = db.ResolveName(entry.NpcRef.Plugin, entry.NpcRef.FormId);
-                entry.ResolvedEditorId = db.ResolveEditorId(entry.NpcRef.Plugin, entry.NpcRef.FormId);
+                entry.ResolvedName     = library.ResolveName(entry.NpcRef.Plugin, entry.NpcRef.FormId);
+                entry.ResolvedEditorId = library.ResolveEditorId(entry.NpcRef.Plugin, entry.NpcRef.FormId);
             }
             else if (entry.NpcRef.RefType == NpcRefType.LocalFormId)
             {
-                var (eid, name)        = db.ResolveByLocalFormId(entry.NpcRef.Identifier);
+                var (eid, name)        = library.ResolveByLocalFormId(entry.NpcRef.Identifier);
                 entry.ResolvedEditorId = eid;
                 entry.ResolvedName     = name;
             }
@@ -219,7 +225,7 @@ public partial class MainWindow : Window
         ConflictSummary summary,
         List<ModConfiguration> skyPatcherConfigs,
         List<SkyPatcherRule> spidRules,
-        NpcNameDatabase db)
+        ModReferenceLibrary library)
     {
         // Build EditorId index of every SkyPatcher outfit rule (not just conflicting ones).
         var spByEditorId = new Dictionary<string, List<SkyPatcherRule>>(StringComparer.OrdinalIgnoreCase);
@@ -234,9 +240,9 @@ public partial class MainWindow : Window
                 {
                     var eid = npcRef.RefType switch
                     {
-                        NpcRefType.RecordId => db.ResolveEditorId(npcRef.Plugin, npcRef.FormId),
+                        NpcRefType.RecordId => library.ResolveEditorId(npcRef.Plugin, npcRef.FormId),
                         NpcRefType.EditorId => npcRef.Identifier,
-                        NpcRefType.Name     => db.FindEditorIdByName(npcRef.Identifier),
+                        NpcRefType.Name     => library.FindEditorIdByName(npcRef.Identifier),
                         _                   => null
                     };
 
@@ -271,7 +277,7 @@ public partial class MainWindow : Window
                 if (npcRef.RefType == NpcRefType.EditorId)
                 {
                     // Reject values that aren't actually NPC EditorIds (factions, keywords, etc.)
-                    if (!db.IsNpcEditorId(npcRef.Identifier)) continue;
+                    if (!library.IsNpcEditorId(npcRef.Identifier)) continue;
                     eid = npcRef.Identifier;
                 }
                 else
@@ -279,10 +285,10 @@ public partial class MainWindow : Window
                     // SPID StringFilters match against both display names and EditorIds.
                     // Try exact name first; if that fails, check whether the string is itself
                     // a valid NPC EditorId (e.g. "Yngvar" for "Yngvar the Singer").
-                    eid = db.FindEditorIdByName(npcRef.Identifier);
+                    eid = library.FindEditorIdByName(npcRef.Identifier);
                     if (eid == null)
                     {
-                        if (db.IsNpcEditorId(npcRef.Identifier))
+                        if (library.IsNpcEditorId(npcRef.Identifier))
                             eid = npcRef.Identifier;
                         else
                             continue;

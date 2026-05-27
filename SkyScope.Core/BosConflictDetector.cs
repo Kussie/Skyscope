@@ -8,9 +8,8 @@ namespace SkyScope.Core;
 
 public class BosConflictDetector
 {
-    public BosConflictSummary DetectConflicts(List<BosSwapRule> rules)
+    public BosConflictSummary DetectConflicts(List<BosSwapRule> rules, ModReferenceLibrary? library = null)
     {
-        // key → (representative ref, list of sources)
         var map = new Dictionary<string, (BosObjectRef Ref, List<BosConflictSource> Sources)>();
 
         foreach (var rule in rules)
@@ -46,21 +45,21 @@ public class BosConflictDetector
         {
             if (sources.Count < 2) continue;
 
-            // All sources swap to the same target — redundant but not a conflict
             var first = sources[0].SwapTarget;
             if (sources.All(s => string.Equals(s.SwapTarget, first, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
-            // Sort sources by filename (case-sensitive alpha — BOS load order)
             var sorted = sources
                 .OrderBy(s => Path.GetFileName(s.FilePath), StringComparer.Ordinal)
                 .ToList();
 
-            conflicts.Add(new BosConflictEntry
-            {
-                ObjectRef = objRef,
-                Sources   = sorted
-            });
+            var entry = new BosConflictEntry { ObjectRef = objRef, Sources = sorted };
+
+            // Enrich display name from the library when available
+            if (library != null)
+                entry.ResolvedName = library.GetDisplayName(objRef.NormalizedKey);
+
+            conflicts.Add(entry);
         }
 
         conflicts.Sort((a, b) =>
