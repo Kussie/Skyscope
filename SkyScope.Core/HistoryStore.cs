@@ -22,6 +22,8 @@ public class HistoryStore
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    public const int MaxRecords = 500;
+
     private List<ChangeRecord> _records = new();
 
     public IReadOnlyList<ChangeRecord> Records => _records.AsReadOnly();
@@ -34,8 +36,13 @@ public class HistoryStore
         {
             if (!File.Exists(StoragePath)) return;
             var json = File.ReadAllText(StoragePath);
-            _records = JsonSerializer.Deserialize<List<ChangeRecord>>(json, SerializerOptions)
+            var all  = JsonSerializer.Deserialize<List<ChangeRecord>>(json, SerializerOptions)
                        ?? new List<ChangeRecord>();
+            // Trim to the most recent MaxRecords entries so a large file never
+            // loads more than a bounded number of records into memory.
+            _records = all.Count > MaxRecords
+                ? all.GetRange(all.Count - MaxRecords, MaxRecords)
+                : all;
         }
         catch
         {
@@ -62,6 +69,8 @@ public class HistoryStore
     public void Add(ChangeRecord record)
     {
         _records.Add(record);
+        if (_records.Count > MaxRecords)
+            _records.RemoveRange(0, _records.Count - MaxRecords);
         Save();
         RecordAdded?.Invoke(record);
     }

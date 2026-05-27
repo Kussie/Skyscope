@@ -160,8 +160,8 @@ public partial class HistoryView : ConflictViewBase, INotifyPropertyChanged
 
         SyncList(_listSource, visible, vm => vm.IsExpanded = false);
 
-        EmptyText.Visibility       = _listSource.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        RecordCountText.Text       = $"{_listSource.Count} change(s)";
+        EmptyText.Visibility = _listSource.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RecordCountText.Text = $"{_allItems.Count} / {HistoryStore.MaxRecords} changes";
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
