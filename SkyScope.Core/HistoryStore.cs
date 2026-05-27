@@ -53,6 +53,12 @@ public class HistoryStore
         catch { /* best-effort */ }
     }
 
+    public void Clear()
+    {
+        _records.Clear();
+        Save();
+    }
+
     public void Add(ChangeRecord record)
     {
         _records.Add(record);

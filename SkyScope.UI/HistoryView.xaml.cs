@@ -182,6 +182,24 @@ public partial class HistoryView : ConflictViewBase, INotifyPropertyChanged
     private void BeforeAfterButton_Click(object sender, RoutedEventArgs e) =>
         DiffMode = DiffMode.BeforeAfter;
 
+    private void ClearHistory_Click(object sender, RoutedEventArgs e)
+    {
+        if (_store == null || _allItems.Count == 0) return;
+
+        var confirm = MessageBox.Show(
+            "This will permanently delete all history records. This action cannot be undone.\n\nAre you sure?",
+            "SkyScope — Clear History",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        _store.Clear();
+        _allItems.Clear();
+        _listSource.Clear();
+        RecordCountText.Text  = "0 changes";
+        EmptyText.Visibility  = Visibility.Visible;
+    }
+
     private void Revert_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn) return;
