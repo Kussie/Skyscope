@@ -24,7 +24,7 @@ public class ChangeRecord
 
     // Exact text before and after — used for content validation during revert.
     public string       OriginalLine     { get; set; } = "";
-    public List<string> ReplacementLines { get; set; } = new();
+    public List<string> ReplacementLines { get; set; } = [];
 
     // Display context shown in the History tab.
     public string ConflictDescription { get; set; } = "";

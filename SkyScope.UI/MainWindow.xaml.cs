@@ -513,7 +513,7 @@ public partial class MainWindow : Window
             {
                 sb.AppendLine($"  {entry.DisplayName}");
                 var winner = entry.Sources.Count > 0
-                    ? Path.GetFileName(entry.Sources[entry.Sources.Count - 1].FilePath)
+                    ? Path.GetFileName(entry.Sources[^1].FilePath)
                     : "?";
                 sb.AppendLine($"    Winner (alphabetical): {winner}");
                 foreach (var src in entry.Sources)
@@ -538,7 +538,7 @@ public partial class MainWindow : Window
                 var sorted  = entry.Sources
                     .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
                     .ToList();
-                var winner  = sorted.Count > 0 ? Path.GetFileName(sorted[sorted.Count - 1].FilePath) : "?";
+                var winner  = sorted.Count > 0 ? Path.GetFileName(sorted[^1].FilePath) : "?";
 
                 if (!string.IsNullOrEmpty(entry.ResolvedName))
                     sb.AppendLine($"  {entry.ResolvedName}  [{npc.DisplayText}]");

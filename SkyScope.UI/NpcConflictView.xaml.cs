@@ -15,6 +15,15 @@ namespace SkyScope.UI;
 
 public partial class NpcConflictView : ConflictViewBase
 {
+    private const string ColorAppearance  = "#EBCB8B";
+    private const string ColorSkin        = "#D08770";
+    private const string ColorOutfit      = "#B48EAD";
+    private const string ColorSpell       = "#A3BE8C";
+    private const string ColorPerk        = "#BF616A";
+    private const string ColorBtnInactive = "#4C566A";
+    private const string ColorBtnActiveFg = "#2E3440";
+    private const string ColorBtnInactFg  = "#88C0D0";
+
     private List<NpcConflictViewModel> _allNpcs = new();
     private ConflictSummary?      _lastSummary;
     private ModReferenceLibrary?  _library;
@@ -45,11 +54,11 @@ public partial class NpcConflictView : ConflictViewBase
         var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
         var dict = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
 
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush("#EBCB8B"), null);
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush("#D08770"), null);
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush("#B48EAD"), null);
-        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush("#A3BE8C"), _library);
-        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush("#BF616A"), _library);
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush(ColorAppearance), null);
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush(ColorSkin),       null);
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush(ColorOutfit),     null);
+        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush(ColorSpell), _library);
+        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush(ColorPerk),  _library);
 
         foreach (var vm in dict.Values)
         {
@@ -72,7 +81,7 @@ public partial class NpcConflictView : ConflictViewBase
 
     public void Clear()
     {
-        _allNpcs = new();
+        _allNpcs.Clear();
         _npcListSource.Clear();
         NpcCountText.Text    = "";
         EmptyText.Text       = "Run analysis to populate this view.";
@@ -108,7 +117,7 @@ public partial class NpcConflictView : ConflictViewBase
                 .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(s => s.LineNumber)
                 .ToList();
-            var winner = sorted.Count > 0 ? sorted[sorted.Count - 1] : null;
+            var winner = sorted.Count > 0 ? sorted[^1] : null;
 
             bool isAdditive = ruleType is RuleType.Spell or RuleType.Perk;
             var group = new NpcConflictGroup
@@ -196,57 +205,24 @@ public partial class NpcConflictView : ConflictViewBase
 
         NpcCountText.Text = $"{visible.Count} NPC{(visible.Count == 1 ? "" : "s")}";
 
-        if (_allNpcs.Count == 0)
-        {
-            EmptyText.Text       = "Run analysis to populate this view.";
-            EmptyText.Visibility = Visibility.Visible;
-        }
-        else if (visible.Count == 0)
-        {
-            EmptyText.Text       = "No NPCs match the current filter.";
-            EmptyText.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            EmptyText.Visibility = Visibility.Collapsed;
-        }
+        UpdateEmptyState(EmptyText, _allNpcs.Count > 0, visible.Count,
+            "Run analysis to populate this view.",
+            "No NPCs match the current filter.");
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
         StartSearchDebounce(ApplyFilter, () => _allNpcs.Count > 0);
 
-    private void FilterA_Click(object sender, RoutedEventArgs e)
-    {
-        _filterA = !_filterA;
-        UpdateFilterBtn(FilterAButton, _filterA, "#EBCB8B");
-        ApplyFilter();
-    }
+    private void FilterA_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterA,  FilterAButton,  ColorAppearance);
+    private void FilterS_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterS,  FilterSButton,  ColorSkin);
+    private void FilterO_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterO,  FilterOButton,  ColorOutfit);
+    private void FilterSp_Click(object sender, RoutedEventArgs e) => ToggleFilter(ref _filterSp, FilterSpButton, ColorSpell);
+    private void FilterP_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterP,  FilterPButton,  ColorPerk);
 
-    private void FilterS_Click(object sender, RoutedEventArgs e)
+    private void ToggleFilter(ref bool flag, Button btn, string activeHex)
     {
-        _filterS = !_filterS;
-        UpdateFilterBtn(FilterSButton, _filterS, "#D08770");
-        ApplyFilter();
-    }
-
-    private void FilterO_Click(object sender, RoutedEventArgs e)
-    {
-        _filterO = !_filterO;
-        UpdateFilterBtn(FilterOButton, _filterO, "#B48EAD");
-        ApplyFilter();
-    }
-
-    private void FilterSp_Click(object sender, RoutedEventArgs e)
-    {
-        _filterSp = !_filterSp;
-        UpdateFilterBtn(FilterSpButton, _filterSp, "#A3BE8C");
-        ApplyFilter();
-    }
-
-    private void FilterP_Click(object sender, RoutedEventArgs e)
-    {
-        _filterP = !_filterP;
-        UpdateFilterBtn(FilterPButton, _filterP, "#BF616A");
+        flag = !flag;
+        UpdateFilterBtn(btn, flag, activeHex);
         ApplyFilter();
     }
 
@@ -258,8 +234,8 @@ public partial class NpcConflictView : ConflictViewBase
 
     private static void UpdateFilterBtn(Button btn, bool active, string activeHex)
     {
-        btn.Background = active ? HexBrush(activeHex) : HexBrush("#4C566A");
-        btn.Foreground = active ? HexBrush("#2E3440")  : HexBrush("#88C0D0");
+        btn.Background = active ? HexBrush(activeHex)      : HexBrush(ColorBtnInactive);
+        btn.Foreground = active ? HexBrush(ColorBtnActiveFg) : HexBrush(ColorBtnInactFg);
     }
 
     private void MakeWinner_Click(object sender, RoutedEventArgs e)

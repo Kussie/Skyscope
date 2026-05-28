@@ -60,8 +60,8 @@ public class ConflictDetector
         BuildConflicts(appearanceMap, summary.AppearanceConflicts);
         BuildConflicts(skinMap,       summary.SkinConflicts);
         BuildConflicts(outfitMap,     summary.OutfitDefaultConflicts);
-        BuildConflictsAdditive(spellMap, summary.SpellConflicts);
-        BuildConflictsAdditive(perkMap,  summary.PerkConflicts);
+        BuildConflicts(spellMap, summary.SpellConflicts, additive: true);
+        BuildConflicts(perkMap,  summary.PerkConflicts,  additive: true);
 
         return summary;
     }
@@ -69,34 +69,22 @@ public class ConflictDetector
     private static string ResolveKey(NpcReference npcRef, ModReferenceLibrary? library) =>
         library != null ? library.GetCanonicalKey(npcRef) : npcRef.NormalizedKey;
 
+    // When additive=true (Spell/Perk), same-value entries from different files are still duplicates.
     private static void BuildConflicts(
         Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)> map,
-        List<ConflictEntry> target)
+        List<ConflictEntry> target,
+        bool additive = false)
     {
         foreach (var (_, (npcRef, sources)) in map)
         {
             if (sources.Count < 2) continue;
 
-            var first = sources[0].RuleValue;
-            if (sources.All(s => string.Equals(s.RuleValue, first, StringComparison.OrdinalIgnoreCase)))
-                continue;
-
-            target.Add(new ConflictEntry
+            if (!additive)
             {
-                NpcRef  = npcRef,
-                Sources = new List<ConflictSource>(sources)
-            });
-        }
-    }
-
-    // Additive rules (Spell/Perk): same-value entries from different files are still duplicates.
-    private static void BuildConflictsAdditive(
-        Dictionary<string, (NpcReference Ref, List<ConflictSource> Sources)> map,
-        List<ConflictEntry> target)
-    {
-        foreach (var (_, (npcRef, sources)) in map)
-        {
-            if (sources.Count < 2) continue;
+                var first = sources[0].RuleValue;
+                if (sources.All(s => string.Equals(s.RuleValue, first, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+            }
 
             target.Add(new ConflictEntry
             {

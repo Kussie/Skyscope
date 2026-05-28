@@ -69,7 +69,7 @@ public partial class BosConflictView : ConflictViewBase
 
     public void Clear()
     {
-        _allConflicts = new();
+        _allConflicts.Clear();
         _listSource.Clear();
         ConflictCountText.Text = "";
         EmptyText.Text         = "Run analysis to populate this view.";
@@ -90,20 +90,9 @@ public partial class BosConflictView : ConflictViewBase
 
         ConflictCountText.Text = $"{visible.Count} conflict{(visible.Count == 1 ? "" : "s")}";
 
-        if (_allConflicts.Count == 0)
-        {
-            EmptyText.Text       = "Run analysis to populate this view.";
-            EmptyText.Visibility = Visibility.Visible;
-        }
-        else if (visible.Count == 0)
-        {
-            EmptyText.Text       = "No conflicts match the current filter.";
-            EmptyText.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            EmptyText.Visibility = Visibility.Collapsed;
-        }
+        UpdateEmptyState(EmptyText, _allConflicts.Count > 0, visible.Count,
+            "Run analysis to populate this view.",
+            "No conflicts match the current filter.");
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>

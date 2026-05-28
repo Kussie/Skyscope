@@ -70,7 +70,7 @@ public static class ConflictResolutionHelper
         var commentLine    = $"; SkyScope [{record.ChangeCode}]: Rule commented out - {conflictDescription}".TrimEnd(' ', '-');
         var commentedLine  = ";" + lines[idx];
 
-        record.ReplacementLines = new List<string> { commentLine, commentedLine };
+        record.ReplacementLines = [commentLine, commentedLine];
 
         var updated = new List<string>(lines);
         updated.Insert(idx, commentLine);
@@ -169,7 +169,7 @@ public static class ConflictResolutionHelper
         var newLine = new string(' ', indent) + prefix + " " + string.Join("|", fields);
         var commentLine = $"{new string(' ', indent)}; SkyScope [{record.ChangeCode}]: Rule modified - {conflictDescription}".TrimEnd(' ', '-');
 
-        record.ReplacementLines = new List<string> { commentLine, newLine };
+        record.ReplacementLines = [commentLine, newLine];
 
         var updated = new List<string>(lines);
         updated.Insert(idx, commentLine);
@@ -209,7 +209,7 @@ public static class ConflictResolutionHelper
         var startMarker = $"; SkyScope [{code}]: Rule modification start{desc}";
         var endMarker   = $"; SkyScope [{code}]: Rule modification end";
 
-        var replacement = new List<string> { origComment, startMarker };
+        List<string> replacement = [origComment, startMarker];
         replacement.AddRange(newRules);
         replacement.Add(endMarker);
         record.ReplacementLines = replacement;
@@ -239,7 +239,7 @@ public static class ConflictResolutionHelper
         var commentLine   = $"; SkyScope [{record.ChangeCode}]: Rule commented out - {conflictDescription}".TrimEnd(' ', '-');
         var commentedLine = ";" + originalLine;
 
-        record.ReplacementLines = new List<string> { commentLine, commentedLine };
+        record.ReplacementLines = [commentLine, commentedLine];
 
         var updated = new List<string>(lines);
         updated.Insert(idx, commentLine);

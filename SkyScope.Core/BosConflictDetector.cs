@@ -39,7 +39,7 @@ public class BosConflictDetector
             }
         }
 
-        var conflicts = new List<BosConflictEntry>();
+        List<BosConflictEntry> conflicts = [];
 
         foreach (var (_, (objRef, sources)) in map)
         {

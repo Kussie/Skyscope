@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace SkyScope.Models;
 
@@ -38,24 +37,17 @@ public class NpcReference
 
     public string NormalizedKey => RefType switch
     {
-        NpcRefType.RecordId    => $"RID:{Plugin.ToLowerInvariant()}|{NormalizeFormId(FormId)}",
+        NpcRefType.RecordId    => $"RID:{Plugin.ToLowerInvariant()}|{FormIdUtils.NormalizeFormId(FormId)}",
         NpcRefType.EditorId    => $"EID:{Identifier.ToLowerInvariant()}",
         NpcRefType.Name        => $"NAME:{Identifier.ToLowerInvariant()}",
         NpcRefType.LocalFormId => $"LFI:{Identifier.ToLowerInvariant()}",
         _                      => string.Empty
     };
-
-    private static string NormalizeFormId(string formId)
-    {
-        if (uint.TryParse(formId, NumberStyles.HexNumber, null, out var val))
-            return val.ToString("X");
-        return formId.ToUpperInvariant();
-    }
 }
 
 public class SkyPatcherRule
 {
-    public List<NpcReference> TargetNpcs { get; set; } = new();
+    public List<NpcReference> TargetNpcs { get; set; } = [];
     public RuleType RuleType { get; set; }
     public string  RuleValue     { get; set; } = string.Empty;
     public string  SourceFile    { get; set; } = string.Empty;
@@ -84,13 +76,13 @@ public class ModConfiguration
 {
     public string ModName { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
-    public List<SkyPatcherRule> Rules { get; set; } = new();
+    public List<SkyPatcherRule> Rules { get; set; } = [];
 }
 
 public class ConflictEntry
 {
     public NpcReference NpcRef { get; set; } = new();
-    public List<ConflictSource> Sources { get; set; } = new();
+    public List<ConflictSource> Sources { get; set; } = [];
 
     public string? ResolvedName     { get; set; }
     public string? ResolvedEditorId { get; set; }
@@ -112,11 +104,11 @@ public class ConflictEntry
 
 public class ConflictSummary
 {
-    public List<ConflictEntry> AppearanceConflicts { get; set; } = new();
-    public List<ConflictEntry> SkinConflicts { get; set; } = new();
-    public List<ConflictEntry> OutfitDefaultConflicts { get; set; } = new();
-    public List<ConflictEntry> SpellConflicts { get; set; } = new();
-    public List<ConflictEntry> PerkConflicts { get; set; } = new();
+    public List<ConflictEntry> AppearanceConflicts    { get; set; } = [];
+    public List<ConflictEntry> SkinConflicts          { get; set; } = [];
+    public List<ConflictEntry> OutfitDefaultConflicts { get; set; } = [];
+    public List<ConflictEntry> SpellConflicts         { get; set; } = [];
+    public List<ConflictEntry> PerkConflicts          { get; set; } = [];
 
     public int TotalConflicts =>
         AppearanceConflicts.Count + SkinConflicts.Count + OutfitDefaultConflicts.Count +

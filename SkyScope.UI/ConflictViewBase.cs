@@ -85,6 +85,29 @@ public abstract class ConflictViewBase : UserControl
             vm.IsExpanded = !vm.IsExpanded;
     }
 
+    // Updates the empty-state label after a filter pass.
+    // noDataMessage:  shown when the backing list has never been populated.
+    // noMatchMessage: shown when items exist but none pass the current filter.
+    protected static void UpdateEmptyState(
+        TextBlock emptyText, bool hasData, int visibleCount,
+        string noDataMessage, string noMatchMessage)
+    {
+        if (!hasData)
+        {
+            emptyText.Text       = noDataMessage;
+            emptyText.Visibility = Visibility.Visible;
+        }
+        else if (visibleCount == 0)
+        {
+            emptyText.Text       = noMatchMessage;
+            emptyText.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            emptyText.Visibility = Visibility.Collapsed;
+        }
+    }
+
     // Shared open-file action — wired via Click="OpenFile_Click" in both views.
     protected void OpenFile_Click(object sender, RoutedEventArgs e)
     {

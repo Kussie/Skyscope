@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace SkyScope.Models;
 
@@ -19,23 +17,16 @@ public class BosObjectRef
 
     public string NormalizedKey => RefType switch
     {
-        BosRefType.FormIdWithPlugin => $"RID:{Plugin.ToLowerInvariant()}|{NormFormId(FormId)}",
+        BosRefType.FormIdWithPlugin => $"RID:{Plugin.ToLowerInvariant()}|{FormIdUtils.NormalizeFormId(FormId)}",
         BosRefType.EditorId         => $"EID:{Identifier.ToLowerInvariant()}",
         BosRefType.BareHex          => $"HEX:{Identifier.ToLowerInvariant()}",
         _                           => ""
     };
-
-    private static string NormFormId(string formId)
-    {
-        if (uint.TryParse(formId, NumberStyles.HexNumber, null, out var val))
-            return val.ToString("X");
-        return formId.ToUpperInvariant();
-    }
 }
 
 public class BosSwapRule
 {
-    public List<BosObjectRef> OriginalObjects  { get; set; } = new();
+    public List<BosObjectRef> OriginalObjects  { get; set; } = [];
     public string  SwapTarget                  { get; set; } = "";
     public string  SourceFile                  { get; set; } = "";
     public int     LineNumber                  { get; set; }
@@ -61,7 +52,7 @@ public class BosConflictSource
 public class BosConflictEntry
 {
     public BosObjectRef             ObjectRef { get; set; } = new();
-    public List<BosConflictSource>  Sources   { get; set; } = new();
+    public List<BosConflictSource>  Sources   { get; set; } = [];
     public string? ResolvedName               { get; set; }
 
     public string DisplayName => ResolvedName ?? ObjectRef.DisplayText;
@@ -69,7 +60,7 @@ public class BosConflictEntry
 
 public class BosConflictSummary
 {
-    public List<BosConflictEntry> SwapConflicts { get; set; } = new();
+    public List<BosConflictEntry> SwapConflicts { get; set; } = [];
     public int FilesScanned                     { get; set; }
     public int TotalConflicts                   => SwapConflicts.Count;
 }

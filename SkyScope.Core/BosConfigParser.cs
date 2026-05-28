@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using SkyScope.Models;
 
@@ -18,7 +19,7 @@ public class BosConfigParser
         foreach (var filePath in files)
         {
             try { rules.AddRange(ParseFile(filePath)); }
-            catch { }
+            catch (Exception ex) { Debug.WriteLine($"[BOS] Skipped {filePath}: {ex.Message}"); }
         }
 
         return (rules, files.Length);

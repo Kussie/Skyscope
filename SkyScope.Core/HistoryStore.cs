@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -17,14 +18,14 @@ public class HistoryStore
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        WriteIndented       = true,
-        Converters          = { new JsonStringEnumConverter() },
+        WriteIndented          = true,
+        Converters             = { new JsonStringEnumConverter() },
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     public const int MaxRecords = 500;
 
-    private List<ChangeRecord> _records = new();
+    private List<ChangeRecord> _records = [];
 
     public IReadOnlyList<ChangeRecord> Records => _records.AsReadOnly();
 
@@ -36,17 +37,17 @@ public class HistoryStore
         {
             if (!File.Exists(StoragePath)) return;
             var json = File.ReadAllText(StoragePath);
-            var all  = JsonSerializer.Deserialize<List<ChangeRecord>>(json, SerializerOptions)
-                       ?? new List<ChangeRecord>();
+            var all  = JsonSerializer.Deserialize<List<ChangeRecord>>(json, SerializerOptions) ?? [];
             // Trim to the most recent MaxRecords entries so a large file never
             // loads more than a bounded number of records into memory.
             _records = all.Count > MaxRecords
                 ? all.GetRange(all.Count - MaxRecords, MaxRecords)
                 : all;
         }
-        catch
+        catch (Exception ex)
         {
-            _records = new List<ChangeRecord>();
+            Debug.WriteLine($"[HistoryStore] Failed to load history: {ex.Message}");
+            _records = [];
         }
     }
 

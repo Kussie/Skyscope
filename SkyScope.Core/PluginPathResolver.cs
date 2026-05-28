@@ -13,23 +13,17 @@ public static class PluginPathResolver
         return GetOrderedPluginPathsInternal(skyrimGameDirectory, dataDir);
     }
 
-    public static IReadOnlyList<string> GetOrderedPluginNames(string skyrimGameDirectory)
-    {
-        return GetOrderedPluginPaths(skyrimGameDirectory)
-            .Select(Path.GetFileName)
-            .Where(n => n != null)
-            .Select(n => n!)
-            .ToList();
-    }
+    public static IReadOnlyList<string> GetOrderedPluginNames(string skyrimGameDirectory) =>
+        GetOrderedPluginPaths(skyrimGameDirectory).ConvertAll(p => Path.GetFileName(p)!);
 
     private static List<string> GetOrderedPluginPathsInternal(string skyrimGameDirectory, string dataDir)
     {
-        if (!Directory.Exists(dataDir)) return new List<string>();
+        if (!Directory.Exists(dataDir)) return [];
 
         var pluginsTxt = FindPluginsTxt(skyrimGameDirectory);
         if (pluginsTxt != null)
         {
-            var ordered = new List<string>();
+            List<string> ordered = [];
             foreach (var line in File.ReadAllLines(pluginsTxt))
             {
                 var trimmed = line.TrimStart('*').Trim();
