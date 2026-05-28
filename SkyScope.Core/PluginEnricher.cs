@@ -37,7 +37,22 @@ public class PluginEnricher
                 var npcResult = npcParser.Parse(pluginPath);
 
                 foreach (var npc in npcResult.Npcs)
-                    library.EnrichNpc(npc.OriginalPlugin, npc.LocalFormId, npc.EditorId, npc.FullName);
+                {
+                    NpcAttributeSet? attrs = null;
+                    if (npc.Race.HasValue || npc.Class.HasValue || npc.Keywords.Count > 0
+                        || npc.Factions.Count > 0 || npc.IsMale.HasValue)
+                    {
+                        attrs = new NpcAttributeSet
+                        {
+                            Race  = npc.Race,
+                            Class = npc.Class,
+                            IsMale = npc.IsMale
+                        };
+                        attrs.Keywords.AddRange(npc.Keywords);
+                        attrs.Factions.AddRange(npc.Factions);
+                    }
+                    library.EnrichNpc(npc.OriginalPlugin, npc.LocalFormId, npc.EditorId, npc.FullName, attrs);
+                }
 
                 if (npcResult.Npcs.Count > 0)
                     progress?.Report($"  {fileName}: {npcResult.Npcs.Count} NPC record(s)");

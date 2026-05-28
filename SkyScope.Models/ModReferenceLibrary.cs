@@ -7,17 +7,29 @@ namespace SkyScope.Models;
 
 public enum KnownRecordType { Unknown, Npc, Spell, Perk, Static, Furniture, Door, Activator, Container, Other }
 
+// NPC attributes extracted from the plugin binary (race, class, factions, keywords, gender).
+// Populated by PluginEnricher via EsmNpcParser; used by SpidFilterEvaluator.
+public class NpcAttributeSet
+{
+    public (string plugin, uint localId)? Race    { get; set; }
+    public (string plugin, uint localId)? Class   { get; set; }
+    public List<(string plugin, uint localId)> Keywords { get; } = [];
+    public List<(string plugin, uint localId)> Factions { get; } = [];
+    public bool? IsMale { get; set; }   // null = unknown; true = male; false = female
+}
+
 public class RecordInfo
 {
     public string?         Plugin       { get; set; }
-    public string?         FormId       { get; set; }   // hex, no 0x prefix
-    public string?         EditorId     { get; set; }   // from config text (registration)
+    public string?         FormId       { get; set; }
+    public string?         EditorId     { get; set; }
     public KnownRecordType ExpectedType { get; set; } = KnownRecordType.Unknown;
 
     public string?         ResolvedEditorId { get; set; }
     public string?         ResolvedName     { get; set; }
     public KnownRecordType ActualType       { get; set; } = KnownRecordType.Unknown;
     public bool            IsEnriched       { get; set; }
+    public NpcAttributeSet? Attributes      { get; set; }
 
     public string DisplayText =>
         ResolvedName ?? ResolvedEditorId ?? EditorId
@@ -108,7 +120,8 @@ public class ModReferenceLibrary
 
     // ── NPC Enrichment (called by PluginEnricher for every NPC_ record) ───────
 
-    public void EnrichNpc(string originalPlugin, uint localFormId, string? editorId, string? name)
+    public void EnrichNpc(string originalPlugin, uint localFormId, string? editorId, string? name,
+                          NpcAttributeSet? attributes = null)
     {
         var key = (originalPlugin.ToLowerInvariant(), localFormId);
 
@@ -124,9 +137,9 @@ public class ModReferenceLibrary
             _byFormId[key] = ri;
         }
 
-        // Later-plugin values win — only overwrite when new value is non-empty.
         if (!string.IsNullOrEmpty(editorId)) ri.ResolvedEditorId = editorId;
         if (!string.IsNullOrEmpty(name))     ri.ResolvedName     = name;
+        if (attributes != null)              ri.Attributes       = attributes;
         ri.ActualType = KnownRecordType.Npc;
 
         if (!ri.IsEnriched)
@@ -138,12 +151,16 @@ public class ModReferenceLibrary
         if (!string.IsNullOrEmpty(editorId))
         {
             _npcEditorIds.Add(editorId);
-            _byEditorId[editorId] = ri;   // override semantics: later plugin wins
+            _byEditorId[editorId] = ri;
         }
 
         if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(editorId))
             _byName[name] = ri;
     }
+
+    // Returns all enriched NPC RecordInfos. Used by SpidFilterEvaluator.
+    public IEnumerable<RecordInfo> GetAllNpcs() =>
+        _byFormId.Values.Where(ri => ri.ActualType == KnownRecordType.Npc && ri.IsEnriched);
 
     // Build bare-hex uniqueness index; call once after all NPC enrichment is done.
     public void FinalizeNpcBareHexIndex()

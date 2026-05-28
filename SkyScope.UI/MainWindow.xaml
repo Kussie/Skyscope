@@ -513,8 +513,8 @@
                                     <Run> — winner-takes-all rules. The last file by SkyPatcher load order wins. Use the NPC Conflicts tab to review sources and make a file the winner.</Run>
                                 </TextBlock>
                                 <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
-                                    <Run FontWeight="Bold" Foreground="#ECEFF4">Spell / Perk</Run>
-                                    <Run> — additive rules from SkyPatcher (spellsToAdd / perksToAdd) and SPID (Spell= / Perk=). All matching rules apply, so multiple mods targeting the same NPC may add duplicate or conflicting distributions, but may not be conflicts really.</Run>
+                                    <Run FontWeight="Bold" Foreground="#ECEFF4">Spells / Perks</Run>
+                                    <Run> — additive rules from SkyPatcher (spellsToAdd / perksToAdd) and SPID (Spell= / Perk=). All matching rules apply, so multiple mods targeting the same NPC may add duplicate or conflicting distributions, but may not be true conflicts really.</Run>
                                 </TextBlock>
                                 <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
                                     <Run FontWeight="Bold" Foreground="#ECEFF4">Base Object Swapper</Run>

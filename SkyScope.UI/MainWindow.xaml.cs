@@ -302,6 +302,19 @@ public partial class MainWindow : Window
         // StringFilter refs (Name type) go through the name→EditorId reverse lookup first.
         var spidByEditorId = new Dictionary<string, (NpcReference NpcRef, List<(SkyPatcherRule Rule, string Identifier)> Entries)>(StringComparer.OrdinalIgnoreCase);
 
+        void AddSpidEntry(string eid, SkyPatcherRule rule, string identifier)
+        {
+            if (!spidByEditorId.TryGetValue(eid, out var entry))
+            {
+                var syntheticRef = new NpcReference { RefType = NpcRefType.EditorId, Identifier = eid };
+                spidByEditorId[eid] = (syntheticRef, new());
+            }
+            var entries = spidByEditorId[eid].Entries;
+            if (!entries.Exists(e => string.Equals(e.Rule.SourceFile, rule.SourceFile, StringComparison.OrdinalIgnoreCase)))
+                entries.Add((rule, identifier));
+        }
+
+        // ── Direct NPC refs (Field 1 FormId refs and legacy Name/EditorId refs) ──
         foreach (var rule in spidRules)
         {
             foreach (var npcRef in rule.TargetNpcs)
@@ -309,15 +322,11 @@ public partial class MainWindow : Window
                 string? eid;
                 if (npcRef.RefType == NpcRefType.EditorId)
                 {
-                    // Reject values that aren't actually NPC EditorIds (factions, keywords, etc.)
                     if (!library.IsNpcEditorId(npcRef.Identifier)) continue;
                     eid = npcRef.Identifier;
                 }
                 else
                 {
-                    // SPID StringFilters match against both display names and EditorIds.
-                    // Try exact name first; if that fails, check whether the string is itself
-                    // a valid NPC EditorId (e.g. "Yngvar" for "Yngvar the Singer").
                     eid = library.FindEditorIdByName(npcRef.Identifier);
                     if (eid == null)
                     {
@@ -328,13 +337,17 @@ public partial class MainWindow : Window
                     }
                 }
 
-                if (!spidByEditorId.TryGetValue(eid, out var entry))
-                    spidByEditorId[eid] = (npcRef, new());
-
-                var entries = spidByEditorId[eid].Entries;
-                if (!entries.Exists(e => string.Equals(e.Rule.SourceFile, rule.SourceFile, StringComparison.OrdinalIgnoreCase)))
-                    entries.Add((rule, npcRef.Identifier));
+                AddSpidEntry(eid, rule, npcRef.Identifier);
             }
+        }
+
+        // ── Filter-based refs (keyword/faction/race/trait filters via SpidFilterEvaluator) ──
+        var evaluator = new SpidFilterEvaluator(library);
+        foreach (var rule in spidRules)
+        {
+            var expandedEids = evaluator.ExpandFilterTargets(rule);
+            foreach (var eid in expandedEids)
+                AddSpidEntry(eid, rule, eid);
         }
 
         // Merge.

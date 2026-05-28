@@ -32,6 +32,11 @@ public class ReferenceExtractor
             foreach (var npcRef in rule.TargetNpcs)
                 RegisterNpcRef(library, npcRef);
 
+            // Register FormFilter Plugin+FormId refs so attribute display names can be resolved
+            foreach (var ff in rule.SpidFormFilters)
+                if (ff.Plugin != null && ff.FormId != null)
+                    library.RegisterFormIdRef(ff.Plugin, ff.FormId, KnownRecordType.Unknown);
+
             if (rule.RuleType is RuleType.Spell or RuleType.Perk)
                 RegisterSpellPerkValue(library, rule.RuleValue);
         }

@@ -119,6 +119,13 @@ public partial class NpcConflictView : ConflictViewBase
                 .ToList();
             var winner = sorted.Count > 0 ? sorted[^1] : null;
 
+            // Outfit conflicts where every source is a probabilistic SPID rule (chance < 100%)
+            // have no clear winner — treat like additive rules: show Remove, hide Make Winner.
+            bool allProbabilistic = ruleType == RuleType.OutfitDefault &&
+                                    sorted.Count > 0 &&
+                                    sorted.All(s => s.SpidChance.HasValue && s.SpidChance.Value < 100);
+            if (allProbabilistic) winner = null;
+
             bool isAdditive = ruleType is RuleType.Spell or RuleType.Perk;
             var group = new NpcConflictGroup
             {
@@ -156,7 +163,8 @@ public partial class NpcConflictView : ConflictViewBase
                     SpidChance          = src.SpidChance,
                     SpidNpcIdentifier   = src.SpidNpcIdentifier,
                     IsAdditive          = isAdditive,
-                    IsWinner            = !isAdditive &&
+                    IsProbabilistic     = allProbabilistic,
+                    IsWinner            = !isAdditive && !allProbabilistic &&
                                          winner != null &&
                                          string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
                                          src.LineNumber == winner.LineNumber,
@@ -429,6 +437,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public string  RuleValue           { get; init; } = "";
     public string  ResolvedRuleDisplay { get; init; } = "";
     public bool    IsAdditive          { get; init; }
+    public bool    IsProbabilistic     { get; init; }
     public string  SourceTool          { get; init; } = "SkyPatcher";
     public int?    SpidChance          { get; init; }
     public string? SpidNpcIdentifier   { get; init; }

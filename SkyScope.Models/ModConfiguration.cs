@@ -45,18 +45,56 @@ public class NpcReference
     };
 }
 
+public enum SpidFilterModifier { Match, Not, All, Substring }
+
+// One entry from SPID Field 1 (StringFilters): NPC name, EditorId, keyword name, or direct 0x~Plugin ref.
+public class SpidStringFilter
+{
+    public SpidFilterModifier Modifier { get; set; } = SpidFilterModifier.Match;
+    public string  Text   { get; set; } = string.Empty; // raw text value
+    public string? Plugin { get; set; }   // non-null when entry is a 0x~Plugin form ref
+    public string? FormId { get; set; }   // hex without 0x prefix
+}
+
+// One entry from SPID Field 2 (FormFilters): faction, race, keyword, class, location FormIds.
+public class SpidFormFilter
+{
+    public SpidFilterModifier Modifier { get; set; } = SpidFilterModifier.Match;
+    public string? Plugin   { get; set; }
+    public string? FormId   { get; set; }   // hex without 0x prefix
+    public string? EditorId { get; set; }   // plain EditorId when no FormId present
+}
+
+// Parsed Field 4 (Traits) from a SPID rule.
+public class SpidTraitFilter
+{
+    public bool? Male       { get; set; }
+    public bool? Unique     { get; set; }
+    public bool? Summonable { get; set; }
+    public bool? Child      { get; set; }
+    public bool? Leveled    { get; set; }
+    public bool? Teammate   { get; set; }
+    public bool? Dead       { get; set; }
+}
+
 public class SkyPatcherRule
 {
-    public List<NpcReference> TargetNpcs { get; set; } = [];
+    public List<NpcReference>   TargetNpcs        { get; set; } = [];
+    public List<SpidStringFilter> SpidStringFilters { get; set; } = [];
+    public List<SpidFormFilter>   SpidFormFilters   { get; set; } = [];
+    public SpidTraitFilter?       SpidTraitFilter   { get; set; }
+    public string?                SpidLevelFilter   { get; set; }
+    public bool                   IsFinalOutfit     { get; set; }
+    public bool                   IsDeterministic   { get; set; }
     public RuleType RuleType { get; set; }
     public string  RuleValue     { get; set; } = string.Empty;
     public string  SourceFile    { get; set; } = string.Empty;
     public int     LineNumber    { get; set; }
-    public string? PrecedingLine { get; set; }  // null = first line of file
+    public string? PrecedingLine { get; set; }
     public string  LineText      { get; set; } = string.Empty;
-    public string? FollowingLine { get; set; }  // null = last line of file
+    public string? FollowingLine { get; set; }
     public string  SourceTool    { get; set; } = "SkyPatcher";
-    public int?    SpidChance    { get; set; }  // null = not a SPID rule; 0-100 when set
+    public int?    SpidChance    { get; set; }
 }
 
 public class ConflictSource

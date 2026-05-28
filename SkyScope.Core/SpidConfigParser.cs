@@ -9,7 +9,6 @@ namespace SkyScope.Core;
 
 public class SpidConfigParser
 {
-    // Returns all Outfit/Spell/Perk rules found across all *_DISTR.ini files under dataPath.
     public (List<SkyPatcherRule> Rules, int FilesScanned, List<string> Errors) LoadDistributionRulesFromDirectory(string dataPath)
     {
         if (!Directory.Exists(dataPath))
@@ -37,6 +36,18 @@ public class SpidConfigParser
     private static string StripHexPrefix(string s) =>
         s.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? s[2..] : s;
 
+    private static (SpidFilterModifier modifier, string stripped) DetectModifier(string raw)
+    {
+        if (raw.Length == 0) return (SpidFilterModifier.Match, raw);
+        return raw[0] switch
+        {
+            '-' => (SpidFilterModifier.Not,       raw[1..].Trim()),
+            '+' => (SpidFilterModifier.All,       raw[1..].Trim()),
+            '*' => (SpidFilterModifier.Substring, raw[1..].Trim()),
+            _   => (SpidFilterModifier.Match,     raw)
+        };
+    }
+
     private static IEnumerable<SkyPatcherRule> ParseFile(string filePath)
     {
         var lines = File.ReadAllLines(filePath);
@@ -51,129 +62,208 @@ public class SpidConfigParser
             var eqIdx = trimmed.IndexOf('=');
             if (eqIdx < 0) continue;
 
-            var keyName = trimmed[..eqIdx].Trim();
-            var ruleType = keyName.ToLowerInvariant() switch
+            var keyLower = trimmed[..eqIdx].Trim().ToLowerInvariant();
+            var ruleType = keyLower switch
             {
-                "outfit" => (RuleType?)RuleType.OutfitDefault,
-                "spell"  => RuleType.Spell,
-                "perk"   => RuleType.Perk,
-                _        => null
+                "outfit" or "finaloutfit" or "sleepoutfit" => (RuleType?)RuleType.OutfitDefault,
+                "spell"                                    => RuleType.Spell,
+                "perk"                                     => RuleType.Perk,
+                _                                          => null
             };
             if (ruleType is null) continue;
+
+            bool isFinalOutfit = keyLower == "finaloutfit";
 
             var value = trimmed[(eqIdx + 1)..].Trim();
             if (string.IsNullOrEmpty(value)) continue;
 
-            // Format: outfit | StringFilters | FormFilters | LevelFilters | TraitFilters | Count | Chance
+            // Format: RuleValue | StringFilters | FormFilters | LevelFilters | TraitFilters | Count | Chance
             var fields    = value.Split('|');
             var ruleValue = fields[0].Trim();
-            var npcRefs   = new List<NpcReference>();
 
-            // Field 1 — StringFilters: string names / EditorIds, or 0x...~Plugin.esp form refs.
+            var npcRefs         = new List<NpcReference>();
+            var stringFilters   = new List<SpidStringFilter>();
+            var formFilters     = new List<SpidFormFilter>();
+            string? levelFilter = null;
+            SpidTraitFilter? traitFilter = null;
+
+            // ── Field 1: StringFilters ─────────────────────────────────────────
+            // 0x~Plugin refs = direct NPC FormId → TargetNpcs + SpidStringFilters
+            // Plain text (names, keywords, EditorIds) → SpidStringFilters only
             if (fields.Length > 1)
             {
                 foreach (var raw in fields[1].Split(','))
                 {
                     var f = raw.Trim();
-                    if (string.IsNullOrEmpty(f) || f[0] == '-') continue;
-                    if (uint.TryParse(f, out _)) continue;  // bare decimal — not a useful filter
+                    if (string.IsNullOrEmpty(f)) continue;
 
-                    if (f.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    var (mod, text) = DetectModifier(f);
+                    if (string.IsNullOrEmpty(text)) continue;
+                    if (uint.TryParse(text, out _)) continue; // bare decimal — skip
+
+                    if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                     {
-                        // 0xFormId~Plugin.esp → RecordId ref
-                        var ti = f.IndexOf('~');
+                        var ti = text.IndexOf('~');
                         if (ti > 0)
                         {
-                            var fid = StripHexPrefix(f[..ti].Trim());
-                            var plg = f[(ti + 1)..].Trim();
+                            var fid = StripHexPrefix(text[..ti].Trim());
+                            var plg = text[(ti + 1)..].Trim();
                             if (!string.IsNullOrEmpty(fid) && !string.IsNullOrEmpty(plg))
-                                npcRefs.Add(new NpcReference { RefType = NpcRefType.RecordId, Plugin = plg, FormId = fid });
+                            {
+                                stringFilters.Add(new SpidStringFilter { Modifier = mod, Text = text, Plugin = plg, FormId = fid });
+                                if (mod != SpidFilterModifier.Not)
+                                    npcRefs.Add(new NpcReference { RefType = NpcRefType.RecordId, Plugin = plg, FormId = fid });
+                            }
                         }
                         else
                         {
-                            // Bare 0x... — look up across all plugins at detection time
-                            npcRefs.Add(new NpcReference { RefType = NpcRefType.LocalFormId, Identifier = f });
+                            // Bare 0x — local FormId ref, no plugin context
+                            stringFilters.Add(new SpidStringFilter { Modifier = mod, Text = text });
+                            if (mod != SpidFilterModifier.Not)
+                                npcRefs.Add(new NpcReference { RefType = NpcRefType.LocalFormId, Identifier = text });
                         }
                         continue;
                     }
 
-                    if (f.Contains('~')) continue;  // unrecognised form-ref format
-                    if (f.Contains('|')) continue;  // shouldn't appear in field 1
+                    if (text.Contains('~') || text.Contains('|')) continue;
 
-                    npcRefs.Add(new NpcReference { RefType = NpcRefType.Name, Identifier = f });
+                    // Plain text (keyword name, display name, or EditorId) — filter only, not a direct NPC ref
+                    stringFilters.Add(new SpidStringFilter { Modifier = mod, Text = text });
                 }
             }
 
-            // Field 2 — FormFilters: EditorIds, Plugin|FormId, or 0x... bare hex form IDs.
+            // ── Field 2: FormFilters ───────────────────────────────────────────
+            // These are faction/race/keyword/class FormIds — NOT direct NPC refs.
+            // Only populate SpidFormFilters, never TargetNpcs.
             if (fields.Length > 2)
             {
                 foreach (var raw in fields[2].Split(','))
                 {
                     var f = raw.Trim();
-                    if (string.IsNullOrEmpty(f) || f[0] == '-') continue;
-                    if (uint.TryParse(f, out _)) continue;  // bare decimal form ID — skip
+                    if (string.IsNullOrEmpty(f)) continue;
 
-                    // Plugin.esp|FormId  (or Plugin.esp|0xFormId)
-                    var pi = f.IndexOf('|');
+                    var (mod, text) = DetectModifier(f);
+                    if (string.IsNullOrEmpty(text)) continue;
+                    if (uint.TryParse(text, out _)) continue; // bare decimal — skip
+
+                    // Plugin.esp|FormId or Plugin.esp|0xFormId
+                    var pi = text.IndexOf('|');
                     if (pi > 0)
                     {
-                        var plg = f[..pi].Trim();
-                        var fid = StripHexPrefix(f[(pi + 1)..].Trim());
+                        var plg = text[..pi].Trim();
+                        var fid = StripHexPrefix(text[(pi + 1)..].Trim());
                         if (!string.IsNullOrEmpty(plg) && !string.IsNullOrEmpty(fid))
-                            npcRefs.Add(new NpcReference { RefType = NpcRefType.RecordId, Plugin = plg, FormId = fid });
+                            formFilters.Add(new SpidFormFilter { Modifier = mod, Plugin = plg, FormId = fid });
                         continue;
                     }
 
-                    // 0x...~Plugin.esp or bare 0x...
-                    if (f.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    // 0x~Plugin or bare 0x
+                    if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                     {
-                        var ti = f.IndexOf('~');
+                        var ti = text.IndexOf('~');
                         if (ti > 0)
                         {
-                            var fid = StripHexPrefix(f[..ti].Trim());
-                            var plg = f[(ti + 1)..].Trim();
+                            var fid = StripHexPrefix(text[..ti].Trim());
+                            var plg = text[(ti + 1)..].Trim();
                             if (!string.IsNullOrEmpty(fid) && !string.IsNullOrEmpty(plg))
-                                npcRefs.Add(new NpcReference { RefType = NpcRefType.RecordId, Plugin = plg, FormId = fid });
+                                formFilters.Add(new SpidFormFilter { Modifier = mod, Plugin = plg, FormId = fid });
                         }
                         else
                         {
-                            npcRefs.Add(new NpcReference { RefType = NpcRefType.LocalFormId, Identifier = f });
+                            formFilters.Add(new SpidFormFilter { Modifier = mod, EditorId = text });
                         }
                         continue;
                     }
 
-                    // Plain EditorId
-                    npcRefs.Add(new NpcReference { RefType = NpcRefType.EditorId, Identifier = f });
+                    // Plain EditorId (faction, race, keyword, class EditorId)
+                    formFilters.Add(new SpidFormFilter { Modifier = mod, EditorId = text });
                 }
             }
 
-            if (npcRefs.Count == 0) continue;
+            // Skip rules with no targeting at all
+            if (npcRefs.Count == 0 && stringFilters.Count == 0 && formFilters.Count == 0) continue;
 
-            // Field 6 — Chance (0-100). Absent or "NONE" means 100.
-            int chance = 100;
+            // ── Field 3: LevelFilters ──────────────────────────────────────────
+            if (fields.Length > 3)
+            {
+                var lf = fields[3].Trim();
+                if (!string.IsNullOrEmpty(lf) && !lf.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+                    levelFilter = lf;
+            }
+
+            // ── Field 4: TraitFilters ──────────────────────────────────────────
+            if (fields.Length > 4)
+                traitFilter = ParseTraitFilter(fields[4].Trim());
+
+            // ── Field 6: Chance (and deterministic flag) ───────────────────────
+            bool isDeterministic = false;
+            int  chance          = 100;
             if (fields.Length > 6)
             {
                 var chanceStr = fields[6].Trim();
+                if (chanceStr.EndsWith('!'))
+                {
+                    isDeterministic = true;
+                    chanceStr = chanceStr[..^1].Trim();
+                }
                 if (int.TryParse(chanceStr, out var parsed))
                     chance = parsed;
             }
 
-            string? preceding = i > 0              ? lines[i - 1] : null;
+            string? preceding = i > 0               ? lines[i - 1] : null;
             string? following = i < lines.Length - 1 ? lines[i + 1] : null;
 
             yield return new SkyPatcherRule
             {
-                TargetNpcs    = npcRefs,
-                RuleType      = ruleType.Value,
-                RuleValue     = ruleValue,
-                SourceFile    = filePath,
-                LineNumber    = i + 1,
-                PrecedingLine = preceding,
-                LineText      = line,
-                FollowingLine = following,
-                SourceTool    = "SPID",
-                SpidChance    = chance
+                TargetNpcs        = npcRefs,
+                SpidStringFilters = stringFilters,
+                SpidFormFilters   = formFilters,
+                SpidTraitFilter   = traitFilter,
+                SpidLevelFilter   = levelFilter,
+                IsFinalOutfit     = isFinalOutfit,
+                IsDeterministic   = isDeterministic,
+                RuleType          = ruleType.Value,
+                RuleValue         = ruleValue,
+                SourceFile        = filePath,
+                LineNumber        = i + 1,
+                PrecedingLine     = preceding,
+                LineText          = line,
+                FollowingLine     = following,
+                SourceTool        = "SPID",
+                SpidChance        = chance
             };
         }
+    }
+
+    private static SpidTraitFilter? ParseTraitFilter(string raw)
+    {
+        if (string.IsNullOrEmpty(raw) || raw.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var filter = new SpidTraitFilter();
+        bool any   = false;
+
+        foreach (var token in raw.Split('/'))
+        {
+            switch (token.Trim().ToUpperInvariant())
+            {
+                case "M":  filter.Male       = true;  any = true; break;
+                case "F":  filter.Male       = false; any = true; break;
+                case "U":  filter.Unique     = true;  any = true; break;
+                case "-U": filter.Unique     = false; any = true; break;
+                case "C":  filter.Child      = true;  any = true; break;
+                case "-C": filter.Child      = false; any = true; break;
+                case "S":  filter.Summonable = true;  any = true; break;
+                case "-S": filter.Summonable = false; any = true; break;
+                case "L":  filter.Leveled    = true;  any = true; break;
+                case "-L": filter.Leveled    = false; any = true; break;
+                case "T":  filter.Teammate   = true;  any = true; break;
+                case "-T": filter.Teammate   = false; any = true; break;
+                case "D":  filter.Dead       = true;  any = true; break;
+                case "-D": filter.Dead       = false; any = true; break;
+            }
+        }
+
+        return any ? filter : null;
     }
 }

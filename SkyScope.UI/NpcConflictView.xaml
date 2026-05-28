@@ -384,7 +384,7 @@
 
                                                                     <!-- Row 5: action buttons -->
                                                                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                                                        <!-- Make Winner (winner-takes-all types) -->
+                                                                        <!-- Make Winner (winner-takes-all types, unless all probabilistic) -->
                                                                         <Button Content="Make Winner"
                                                                                 Tag="{Binding}"
                                                                                 Click="MakeWinner_Click">
@@ -395,11 +395,14 @@
                                                                                         <DataTrigger Binding="{Binding IsAdditive}" Value="True">
                                                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                                                         </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding IsProbabilistic}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
                                                                                     </Style.Triggers>
                                                                                 </Style>
                                                                             </Button.Style>
                                                                         </Button>
-                                                                        <!-- Remove (additive types: Spell / Perk) -->
+                                                                        <!-- Remove (additive types: Spell / Perk, or all-probabilistic outfit groups) -->
                                                                         <Button Content="Remove"
                                                                                 Tag="{Binding}"
                                                                                 Click="RemoveSource_Click">
@@ -409,6 +412,9 @@
                                                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                                                     <Style.Triggers>
                                                                                         <DataTrigger Binding="{Binding IsAdditive}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding IsProbabilistic}" Value="True">
                                                                                             <Setter Property="Visibility" Value="Visible"/>
                                                                                         </DataTrigger>
                                                                                     </Style.Triggers>
