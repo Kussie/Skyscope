@@ -483,12 +483,12 @@
 
                                     <!-- Spell -->
                                     <Border Grid.Row="3" Grid.Column="0" Background="#A3BE8C" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Spell" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Spells" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="SpellSummaryText" Grid.Row="3" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
 
                                     <!-- Perk -->
                                     <Border Grid.Row="4" Grid.Column="0" Background="#BF616A" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="Perk" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="Perks" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="PerkSummaryText" Grid.Row="4" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
 
                                     <!-- Base Object Swapper -->
@@ -514,7 +514,7 @@
                                 </TextBlock>
                                 <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
                                     <Run FontWeight="Bold" Foreground="#ECEFF4">Spell / Perk</Run>
-                                    <Run> — additive rules from SkyPatcher (spellsToAdd / perksToAdd) and SPID (Spell= / Perk=). All matching rules apply, so multiple mods targeting the same NPC may add duplicate or conflicting distributions.</Run>
+                                    <Run> — additive rules from SkyPatcher (spellsToAdd / perksToAdd) and SPID (Spell= / Perk=). All matching rules apply, so multiple mods targeting the same NPC may add duplicate or conflicting distributions, but may not be conflicts really.</Run>
                                 </TextBlock>
                                 <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
                                     <Run FontWeight="Bold" Foreground="#ECEFF4">Base Object Swapper</Run>
