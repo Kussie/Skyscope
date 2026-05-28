@@ -2,27 +2,35 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using SkyScope.Models;
 
 namespace SkyScope.Core;
 
 public class BosConfigParser
 {
-    public (List<BosSwapRule> Rules, int FilesScanned) LoadSwapRulesFromDirectory(string dataPath)
+    public (List<BosSwapRule> Rules, int FilesScanned, List<string> Errors) LoadSwapRulesFromDirectory(string dataPath)
     {
         if (!Directory.Exists(dataPath))
-            return (new(), 0);
+            return (new(), 0, []);
 
-        var files = Directory.GetFiles(dataPath, "*_SWAP.ini", SearchOption.AllDirectories);
-        var rules = new List<BosSwapRule>();
+        var files = Directory.GetFiles(dataPath, "*_SWAP.ini", SearchOption.AllDirectories)
+            .Where(f => !Path.GetFileName(f).Equals("__folder_managed_by_vortex", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var rules  = new List<BosSwapRule>();
+        var errors = new List<string>();
 
         foreach (var filePath in files)
         {
             try { rules.AddRange(ParseFile(filePath)); }
-            catch (Exception ex) { Debug.WriteLine($"[BOS] Skipped {filePath}: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                errors.Add($"Failed to parse {filePath}: {ex.Message}");
+                Debug.WriteLine($"[BOS] Skipped {filePath}: {ex.Message}");
+            }
         }
 
-        return (rules, files.Length);
+        return (rules, files.Length, errors);
     }
 
     private static IEnumerable<BosSwapRule> ParseFile(string filePath)

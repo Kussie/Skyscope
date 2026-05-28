@@ -9,10 +9,10 @@ namespace SkyScope.Core;
 public class SkyPatcherConfigParser
 {
     private const string SkyPatcherBase = @"Data\SKSE\Plugins\SkyPatcher";
-    private const string NpcSubdir     = "npc";
-    private const string OutfitSubdir  = "outfit";
 
-    public List<string> FindSkyPatcherDirectories(string skyrimDirectory)
+    // Returns the SkyPatcher root path. LoadConfigurationsFromDirectory scans recursively,
+    // so all subdirectory layouts (npc/, outfit/, custom mod folders, root-level files) are covered.
+    public string GetSkyPatcherRootPath(string skyrimDirectory)
     {
         if (!Directory.Exists(skyrimDirectory))
             throw new DirectoryNotFoundException($"Skyrim directory not found: {skyrimDirectory}");
@@ -21,41 +21,29 @@ public class SkyPatcherConfigParser
         if (!Directory.Exists(basePath))
             throw new DirectoryNotFoundException($"SkyPatcher directory not found at: {basePath}");
 
-        var result = new List<string>();
-        var npcPath    = Path.Combine(basePath, NpcSubdir);
-        var outfitPath = Path.Combine(basePath, OutfitSubdir);
-
-        if (Directory.Exists(npcPath))    result.Add(npcPath);
-        if (Directory.Exists(outfitPath)) result.Add(outfitPath);
-
-        return result;
+        return basePath;
     }
 
-    public List<ModConfiguration> LoadConfigurationsFromSkyrimDirectory(string skyrimDirectory)
+    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromSkyrimDirectory(string skyrimDirectory)
     {
-        var dirs = FindSkyPatcherDirectories(skyrimDirectory);
-        var configs = new List<ModConfiguration>();
-
-        foreach (var dir in dirs)
-        {
-            var dirConfigs = LoadConfigurationsFromDirectory(dir);
-            configs.AddRange(dirConfigs);
-        }
-
-        return configs;
+        var rootPath = GetSkyPatcherRootPath(skyrimDirectory);
+        return LoadConfigurationsFromDirectory(rootPath);
     }
 
-    public List<ModConfiguration> LoadConfigurationsFromDirectory(string directoryPath)
+    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromDirectory(string directoryPath)
     {
         if (!Directory.Exists(directoryPath))
             throw new DirectoryNotFoundException($"Directory not found: {directoryPath}");
 
         var configs = new List<ModConfiguration>();
+        var errors  = new List<string>();
 
         // Sort by full path so configs are processed in SkyPatcher's load order:
         // folders and files sorted alphanumerically, with the full path as the sort key.
         var iniFiles = Directory.GetFiles(directoryPath, "*.ini", SearchOption.AllDirectories)
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+            .Where(f => !Path.GetFileName(f).Equals("__folder_managed_by_vortex", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         foreach (var filePath in iniFiles)
         {
@@ -67,11 +55,12 @@ public class SkyPatcherConfigParser
             }
             catch (Exception ex)
             {
+                errors.Add($"Failed to parse {filePath}: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Warning: Failed to parse {filePath}: {ex.Message}");
             }
         }
 
-        return configs;
+        return (configs, iniFiles.Length, errors);
     }
 
     // Format (no section headers) — multiple rule types may appear on one line:

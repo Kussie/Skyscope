@@ -52,12 +52,12 @@ public partial class MainWindow : Window
             dialog.InitialDirectory = current;
 
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            SkyrimPathTextBox.Text = dialog.SelectedPath;
+            SkyrimPathTextBox.Text = NormaliseSkyrimPath(dialog.SelectedPath);
     }
 
     private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
     {
-        var skyrimPath = SkyrimPathTextBox.Text?.Trim();
+        var skyrimPath = NormaliseSkyrimPath(SkyrimPathTextBox.Text?.Trim() ?? "");
 
         if (string.IsNullOrEmpty(skyrimPath))
         {
@@ -79,31 +79,27 @@ public partial class MainWindow : Window
 
             StatusTextBlock.Text = "Scanning SkyPatcher configs…";
 
-            List<ModConfiguration> configs;
+            List<ModConfiguration> configs        = [];
+            int                    spFilesScanned = 0;
+            List<string>           spErrors       = [];
             try
             {
-                configs = await Task.Run(() =>
+                (configs, spFilesScanned, spErrors) = await Task.Run(() =>
                     new SkyPatcherConfigParser().LoadConfigurationsFromSkyrimDirectory(skyrimPath));
             }
             catch (DirectoryNotFoundException ex)
             {
-                StatusTextBlock.Text = ex.Message;
-                return;
+                spErrors = [ex.Message];
+                // SkyPatcher not installed — continue so SPID/BOS analysis still runs
             }
 
-            if (configs.Count == 0)
-            {
-                StatusTextBlock.Text = $"No SkyPatcher rule files found under {skyrimPath}. Check that SkyPatcher is installed and the game path is correct.";
-                ClearResults();
-                return;
-            }
 
             StatusTextBlock.Text = "Scanning SPID distribution files…";
-            var (spidRules, spidFileCount) = await Task.Run(() =>
+            var (spidRules, spidFileCount, spidErrors) = await Task.Run(() =>
                 new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
 
             StatusTextBlock.Text = "Scanning Base Object Swapper files…";
-            var (bosRules, bosFileCount) = await Task.Run(() =>
+            var (bosRules, bosFileCount, bosErrors) = await Task.Run(() =>
                 new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
 
             // ── Step 2: Build reference library from parsed rules ───────────
@@ -174,7 +170,7 @@ public partial class MainWindow : Window
             DisplayResults(summary, bosSummary);
 
             if (App.VerboseMode)
-                WriteAnalysisLog(configs, spidRules, bosRules);
+                WriteAnalysisLog(skyrimPath, configs, spFilesScanned, spErrors, spidRules, spidFileCount, spidErrors, bosRules, bosFileCount, bosErrors);
             NpcConflictViewControl.Populate(summary, library);
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;
@@ -187,8 +183,13 @@ public partial class MainWindow : Window
                 ? $"  BOS: {bosFileCount} file(s), {bosSummary.TotalConflicts} conflict(s)."
                 : string.Empty;
             var totalConflicts = summary.TotalConflicts + bosSummary.TotalConflicts;
+            var skyPatcherPart = configs.Count > 0
+                ? $"{configs.Count} SkyPatcher file(s)"
+                : spFilesScanned > 0
+                    ? $"{spFilesScanned} SkyPatcher file(s) scanned (no trackable NPC rules)"
+                    : "no SkyPatcher NPC rule files found";
             StatusTextBlock.Text = totalConflicts == 0
-                ? $"Analysis complete — no conflicts in {configs.Count} SkyPatcher file(s).  NPC database: {library.NpcRecordCount:N0} record(s).{spidSuffix}{bosSuffix}"
+                ? $"Analysis complete — no conflicts.  {skyPatcherPart}.  NPC database: {library.NpcRecordCount:N0} record(s).{spidSuffix}{bosSuffix}"
                 : $"Analysis complete — {totalConflicts} conflict(s) in {configs.Count} SkyPatcher file(s).  NPC database: {library.NpcRecordCount:N0} record(s).{spidSuffix}{bosSuffix}";
         }
         catch (Exception ex)
@@ -410,9 +411,16 @@ public partial class MainWindow : Window
     }
 
     private static void WriteAnalysisLog(
+        string                 skyrimPath,
         List<ModConfiguration> skyPatcherConfigs,
+        int                    skyPatcherFilesScanned,
+        List<string>           skyPatcherErrors,
         List<SkyPatcherRule>   spidRules,
-        List<BosSwapRule>      bosRules)
+        int                    spidFilesScanned,
+        List<string>           spidErrors,
+        List<BosSwapRule>      bosRules,
+        int                    bosFilesScanned,
+        List<string>           bosErrors)
     {
         try
         {
@@ -420,7 +428,24 @@ public partial class MainWindow : Window
             var sb      = new StringBuilder();
 
             sb.AppendLine("SkyScope Analysis Log");
-            sb.AppendLine($"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"Timestamp : {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine();
+
+            // ── SkyPatcher ──────────────────────────────────────────────────
+            var skyPatcherRoot = Path.Combine(skyrimPath, @"Data\SKSE\Plugins\SkyPatcher");
+            sb.AppendLine("--- SkyPatcher Scan ---");
+            sb.AppendLine($"Path   : {skyPatcherRoot}");
+            sb.AppendLine($"Exists : {Directory.Exists(skyPatcherRoot)}");
+            sb.AppendLine($"Files  : {skyPatcherFilesScanned} scanned, {skyPatcherConfigs.Count} with rules");
+            if (skyPatcherErrors.Count > 0)
+            {
+                sb.AppendLine($"Errors : {skyPatcherErrors.Count}");
+                foreach (var err in skyPatcherErrors) sb.AppendLine($"  {err}");
+            }
+            else
+            {
+                sb.AppendLine("Errors : 0");
+            }
             sb.AppendLine();
 
             var skyPatcherFiles = skyPatcherConfigs.Select(c => c.FilePath).OrderBy(f => f).ToList();
@@ -428,9 +453,42 @@ public partial class MainWindow : Window
             foreach (var f in skyPatcherFiles) sb.AppendLine(f);
             sb.AppendLine();
 
+            // ── SPID ────────────────────────────────────────────────────────
+            var dataRoot = Path.Combine(skyrimPath, "Data");
+            sb.AppendLine("--- SPID Scan ---");
+            sb.AppendLine($"Path   : {dataRoot}");
+            sb.AppendLine($"Exists : {Directory.Exists(dataRoot)}");
+            sb.AppendLine($"Files  : {spidFilesScanned} scanned");
+            if (spidErrors.Count > 0)
+            {
+                sb.AppendLine($"Errors : {spidErrors.Count}");
+                foreach (var err in spidErrors) sb.AppendLine($"  {err}");
+            }
+            else
+            {
+                sb.AppendLine("Errors : 0");
+            }
+            sb.AppendLine();
+
             var spidFiles = spidRules.Select(r => r.SourceFile).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(f => f).ToList();
             sb.AppendLine($"--- SPID Files ({spidFiles.Count}) ---");
             foreach (var f in spidFiles) sb.AppendLine(f);
+            sb.AppendLine();
+
+            // ── BOS ─────────────────────────────────────────────────────────
+            sb.AppendLine("--- BOS Scan ---");
+            sb.AppendLine($"Path   : {dataRoot}");
+            sb.AppendLine($"Exists : {Directory.Exists(dataRoot)}");
+            sb.AppendLine($"Files  : {bosFilesScanned} scanned");
+            if (bosErrors.Count > 0)
+            {
+                sb.AppendLine($"Errors : {bosErrors.Count}");
+                foreach (var err in bosErrors) sb.AppendLine($"  {err}");
+            }
+            else
+            {
+                sb.AppendLine("Errors : 0");
+            }
             sb.AppendLine();
 
             var bosFiles = bosRules.Select(r => r.SourceFile).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(f => f).ToList();
@@ -449,7 +507,7 @@ public partial class MainWindow : Window
             var settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
             File.WriteAllLines(settingsPath, new[]
             {
-                $"SkyrimPath:{SkyrimPathTextBox.Text}",
+                $"SkyrimPath:{NormaliseSkyrimPath(SkyrimPathTextBox.Text ?? "")}",
                 $"HistoryDiffMode:{HistoryViewControl.DiffMode}"
             });
             StatusTextBlock.Text = "Settings saved.";
@@ -571,7 +629,7 @@ public partial class MainWindow : Window
             {
                 if (line.StartsWith("SkyrimPath:"))
                 {
-                    var saved = line["SkyrimPath:".Length..];
+                    var saved = NormaliseSkyrimPath(line["SkyrimPath:".Length..]);
                     if (!string.IsNullOrEmpty(saved))
                         SkyrimPathTextBox.Text = saved;
                 }
@@ -622,6 +680,17 @@ public partial class MainWindow : Window
         catch { }
 
         return null;
+    }
+
+    // Strips a trailing \Data or /Data segment so users can paste either the game root
+    // or the Data subfolder and get the same result.
+    private static string NormaliseSkyrimPath(string path)
+    {
+        var p = path.TrimEnd('\\', '/');
+        if (p.EndsWith("\\Data", StringComparison.OrdinalIgnoreCase) ||
+            p.EndsWith("/Data",  StringComparison.OrdinalIgnoreCase))
+            p = p[..^5];
+        return p;
     }
 
     private static bool IsSkyrimDirectory(string path)

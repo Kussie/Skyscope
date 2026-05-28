@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using SkyScope.Models;
 
 namespace SkyScope.Core;
@@ -9,21 +10,28 @@ namespace SkyScope.Core;
 public class SpidConfigParser
 {
     // Returns all Outfit/Spell/Perk rules found across all *_DISTR.ini files under dataPath.
-    public (List<SkyPatcherRule> Rules, int FilesScanned) LoadDistributionRulesFromDirectory(string dataPath)
+    public (List<SkyPatcherRule> Rules, int FilesScanned, List<string> Errors) LoadDistributionRulesFromDirectory(string dataPath)
     {
         if (!Directory.Exists(dataPath))
-            return (new(), 0);
+            return (new(), 0, []);
 
-        var files = Directory.GetFiles(dataPath, "*_DISTR.ini", SearchOption.AllDirectories);
-        var rules = new List<SkyPatcherRule>();
+        var files = Directory.GetFiles(dataPath, "*_DISTR.ini", SearchOption.AllDirectories)
+            .Where(f => !Path.GetFileName(f).Equals("__folder_managed_by_vortex", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var rules  = new List<SkyPatcherRule>();
+        var errors = new List<string>();
 
         foreach (var filePath in files)
         {
             try { rules.AddRange(ParseFile(filePath)); }
-            catch (Exception ex) { Debug.WriteLine($"[SPID] Skipped {filePath}: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                errors.Add($"Failed to parse {filePath}: {ex.Message}");
+                Debug.WriteLine($"[SPID] Skipped {filePath}: {ex.Message}");
+            }
         }
 
-        return (rules, files.Length);
+        return (rules, files.Length, errors);
     }
 
     private static string StripHexPrefix(string s) =>
