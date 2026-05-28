@@ -77,13 +77,13 @@
                             ToolTip="Toggle: Outfit conflicts"
                             Style="{StaticResource ConflictPrimaryButton}"/>
                     <Button x:Name="FilterSpButton" Content="Sp" Width="30" Height="26" Margin="2,0"
-                            Background="#A3BE8C" Foreground="#2E3440"
+                            Background="#4C566A" Foreground="#88C0D0"
                             FontWeight="Bold" FontSize="10" Padding="0"
                             Click="FilterSp_Click" Cursor="Hand"
                             ToolTip="Toggle: Spell conflicts"
                             Style="{StaticResource ConflictPrimaryButton}"/>
                     <Button x:Name="FilterPButton"  Content="P"  Width="26" Height="26" Margin="2,0"
-                            Background="#BF616A" Foreground="#2E3440"
+                            Background="#4C566A" Foreground="#88C0D0"
                             FontWeight="Bold" FontSize="11" Padding="0"
                             Click="FilterP_Click" Cursor="Hand"
                             ToolTip="Toggle: Perk conflicts"
@@ -148,18 +148,19 @@
                                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding DisplayName}"
                                                    FontSize="13" FontWeight="SemiBold" Foreground="#ECEFF4"/>
-                                        <TextBlock Text="{Binding SubText}"
-                                                   FontSize="10" Foreground="#B8C5D5" Margin="0,2,0,0">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
+                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding SubText}" Value="">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="Editor ID: " FontSize="10" Foreground="#8C9BB5"/>
+                                            <TextBlock Text="{Binding SubText}" FontSize="10" Foreground="#B8C5D5"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Type badges A / S / O / Sp / P -->
@@ -354,10 +355,14 @@
                                                                     </Grid>
 
                                                                     <!-- Row 2: rule value -->
-                                                                    <TextBlock Text="{Binding ResolvedRuleDisplay}"
-                                                                               FontSize="10" Foreground="#A0AFBE"
-                                                                               Margin="0,4,0,0"
-                                                                               TextTrimming="CharacterEllipsis"/>
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                                        <TextBlock Text="{Binding RuleValueLabel}"
+                                                                                   FontSize="10" Foreground="#8C9BB5"
+                                                                                   Margin="0,0,5,0"/>
+                                                                        <TextBlock Text="{Binding ResolvedRuleDisplay}"
+                                                                                   FontSize="10" Foreground="#A0AFBE"
+                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                    </StackPanel>
 
                                                                     <!-- Row 3: code context -->
                                                                     <local:CodeContextBlock

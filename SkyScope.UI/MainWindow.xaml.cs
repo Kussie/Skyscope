@@ -18,12 +18,16 @@ public partial class MainWindow : Window
 {
     private ConflictSummary?    _lastSummary;
     private BosConflictSummary? _lastBosSummary;
-    private int _lastSpidFileCount;
-    private int _lastBosFileCount;
-    private int _lastDbRecordCount;
+    private int _lastSkyPatcherFilesScanned;
+    private int _lastSkyPatcherSupportedFiles;
     private int _lastSkyPatcherRuleCount;
+    private int _lastSpidFileCount;
+    private int _lastSpidSupportedFiles;
     private int _lastSpidRuleCount;
+    private int _lastBosFileCount;
+    private int _lastBosSupportedFiles;
     private int _lastBosRuleCount;
+    private int _lastDbRecordCount;
     private const string SettingsFileName = "skyscope_settings.txt";
 
     private readonly HistoryStore _historyStore = new();
@@ -87,6 +91,12 @@ public partial class MainWindow : Window
         }
 
         AnalyzeButton.IsEnabled = false;
+        ReportTab.IsEnabled     = false;
+        NpcTab.IsEnabled        = false;
+        BosTab.IsEnabled        = false;
+        MainTabControl.SelectedIndex = 0;
+        try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt"), "", Encoding.UTF8); }
+        catch { }
 
         try
         {
@@ -158,7 +168,7 @@ public partial class MainWindow : Window
             var summary = await Task.Run(() =>
             {
                 var s = new ConflictDetector().DetectConflicts(allConfigs, library);
-                s.TotalFilesScanned = configs.Count;
+                s.TotalFilesScanned = spFilesScanned;
                 return s;
             });
 
@@ -175,17 +185,24 @@ public partial class MainWindow : Window
                 new BosConflictDetector().DetectConflicts(bosRules, library));
             bosSummary.FilesScanned = bosFileCount;
 
-            _lastSpidFileCount       = spidFileCount;
-            _lastBosFileCount        = bosFileCount;
-            _lastSkyPatcherRuleCount = configs.Sum(c => c.Rules.Count);
-            _lastSpidRuleCount       = spidRules.Count;
-            _lastBosRuleCount        = bosRules.Count;
+            _lastSkyPatcherFilesScanned  = spFilesScanned;
+            _lastSkyPatcherSupportedFiles = configs.Count;
+            _lastSkyPatcherRuleCount      = configs.Sum(c => c.Rules.Count);
+            _lastSpidFileCount            = spidFileCount;
+            _lastSpidSupportedFiles       = spidRules.Select(r => r.SourceFile).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            _lastSpidRuleCount            = spidRules.Count;
+            _lastBosFileCount             = bosFileCount;
+            _lastBosSupportedFiles        = bosRules.Select(r => r.SourceFile).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            _lastBosRuleCount             = bosRules.Count;
             _lastSummary             = summary;
             _lastBosSummary          = bosSummary;
+            ReportTab.IsEnabled  = true;
+            NpcTab.IsEnabled     = true;
+            BosTab.IsEnabled     = true;
+            MainTabControl.SelectedIndex = 1;
             DisplayResults(summary, bosSummary);
 
-            if (App.VerboseMode)
-                WriteAnalysisLog(skyrimPath, configs, spFilesScanned, spErrors, spidRules, spidFileCount, spidErrors, bosRules, bosFileCount, bosErrors);
+            WriteAnalysisLog(skyrimPath, configs, spFilesScanned, spErrors, spidRules, spidFileCount, spidErrors, bosRules, bosFileCount, bosErrors);
             NpcConflictViewControl.Populate(summary, library);
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;
@@ -372,12 +389,15 @@ public partial class MainWindow : Window
 
     private void DisplayResults(ConflictSummary summary, BosConflictSummary bosSummary)
     {
-        SkyPatcherFilesText.Text  = summary.TotalFilesScanned.ToString("N0");
-        SkyPatcherRulesText.Text  = _lastSkyPatcherRuleCount.ToString("N0");
-        SpidFilesText.Text        = _lastSpidFileCount.ToString("N0");
-        SpidRulesText.Text        = _lastSpidRuleCount.ToString("N0");
-        BosFilesText.Text         = _lastBosFileCount.ToString("N0");
-        BosRulesText.Text         = _lastBosRuleCount.ToString("N0");
+        SkyPatcherFilesText.Text     = _lastSkyPatcherFilesScanned.ToString("N0");
+        SkyPatcherSupportedText.Text = _lastSkyPatcherSupportedFiles.ToString("N0");
+        SkyPatcherRulesText.Text     = _lastSkyPatcherRuleCount.ToString("N0");
+        SpidFilesText.Text           = _lastSpidFileCount.ToString("N0");
+        SpidSupportedText.Text       = _lastSpidSupportedFiles.ToString("N0");
+        SpidRulesText.Text           = _lastSpidRuleCount.ToString("N0");
+        BosFilesText.Text            = _lastBosFileCount.ToString("N0");
+        BosSupportedText.Text        = _lastBosSupportedFiles.ToString("N0");
+        BosRulesText.Text            = _lastBosRuleCount.ToString("N0");
         NpcDbRecordsText.Text     = $"{_lastDbRecordCount:N0}";
 
         AppearanceSummaryText.Text = SummaryLine(summary.AppearanceConflicts.Count);
@@ -415,14 +435,18 @@ public partial class MainWindow : Window
         ExportReportButton.IsEnabled = false;
         NpcConflictViewControl.Clear();
         BosConflictViewControl.Clear();
-        _lastSummary             = null;
-        _lastBosSummary          = null;
-        _lastSpidFileCount       = 0;
-        _lastBosFileCount        = 0;
-        _lastDbRecordCount       = 0;
-        _lastSkyPatcherRuleCount = 0;
-        _lastSpidRuleCount       = 0;
-        _lastBosRuleCount        = 0;
+        _lastSummary                  = null;
+        _lastBosSummary               = null;
+        _lastSkyPatcherFilesScanned   = 0;
+        _lastSkyPatcherSupportedFiles = 0;
+        _lastSkyPatcherRuleCount      = 0;
+        _lastSpidFileCount            = 0;
+        _lastSpidSupportedFiles       = 0;
+        _lastSpidRuleCount            = 0;
+        _lastBosFileCount             = 0;
+        _lastBosSupportedFiles        = 0;
+        _lastBosRuleCount             = 0;
+        _lastDbRecordCount            = 0;
     }
 
     private static void WriteAnalysisLog(

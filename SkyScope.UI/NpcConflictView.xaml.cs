@@ -32,8 +32,8 @@ public partial class NpcConflictView : ConflictViewBase
     private bool _filterA  = true;
     private bool _filterS  = true;
     private bool _filterO  = true;
-    private bool _filterSp = true;
-    private bool _filterP  = true;
+    private bool _filterSp = false;
+    private bool _filterP  = false;
 
     private readonly ObservableCollection<NpcConflictViewModel> _npcListSource = new();
 
@@ -143,6 +143,15 @@ public partial class NpcConflictView : ConflictViewBase
                     ResolvedRuleDisplay = library != null
                                          ? library.ResolveRuleValue(src.RuleValue)
                                          : src.RuleValue,
+                    RuleValueLabel      = ruleType switch
+                    {
+                        RuleType.Appearance    => "Copies from:",
+                        RuleType.Skin          => "Skin:",
+                        RuleType.OutfitDefault => "Outfit:",
+                        RuleType.Spell         => "Spell:",
+                        RuleType.Perk          => "Perk:",
+                        _                      => "Value:"
+                    },
                     SourceTool          = src.SourceTool,
                     SpidChance          = src.SpidChance,
                     SpidNpcIdentifier   = src.SpidNpcIdentifier,
@@ -410,6 +419,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
 {
     public string  FileName            { get; init; } = "";
     public string  FilePath            { get; init; } = "";
+    public string  RuleValueLabel      { get; init; } = "";
     public int     LineNumber          { get; init; }
     public string  ConflictLineText    { get; init; } = "";
     public string? PrecedingLine       { get; init; }
