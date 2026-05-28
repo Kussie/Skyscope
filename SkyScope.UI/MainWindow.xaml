@@ -530,8 +530,13 @@
 
         <!-- Footer -->
         <Border Grid.Row="2" Background="#242933" Padding="16,8">
-            <TextBlock Text="SkyScope — Report tab shows a summary overview  ·  use the NPC Conflicts tab to review and resolve individual conflicts"
-                       FontSize="10" Foreground="#4C566A"/>
+            <Grid>
+                <TextBlock Text="SkyScope — Report tab shows a summary overview  ·  use the NPC Conflicts tab to review and resolve individual conflicts"
+                           FontSize="10" Foreground="#4C566A" VerticalAlignment="Center"/>
+                <TextBlock x:Name="VersionTextBlock"
+                           FontSize="10" Foreground="#4C566A"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            </Grid>
         </Border>
     </Grid>
 </Window>

@@ -36,6 +36,21 @@ public partial class MainWindow : Window
         BosConflictViewControl.HistoryStore = _historyStore;
         HistoryViewControl.Refresh(_historyStore);
         LoadSettings();
+        LoadVersion();
+    }
+
+    private void LoadVersion()
+    {
+        try
+        {
+            var path    = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "version.txt");
+            var version = File.Exists(path) ? File.ReadAllText(path).Trim() : "";
+            VersionTextBlock.Text = string.IsNullOrEmpty(version) ? "development version" : version;
+        }
+        catch
+        {
+            VersionTextBlock.Text = "development version";
+        }
     }
 
     private void BrowseButton_Click(object sender, RoutedEventArgs e)

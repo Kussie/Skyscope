@@ -36,6 +36,10 @@ jobs:
           $next  = $count + 1
           "tag=$prefix.$next" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
+      - name: Write version file
+        shell: pwsh
+        run: Set-Content -Path publish\version.txt -Value "${{ steps.version.outputs.tag }}" -NoNewline
+
       - name: Tag release
         shell: bash
         run: |
