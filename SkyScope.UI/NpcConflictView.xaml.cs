@@ -73,18 +73,6 @@ public partial class NpcConflictView : ConflictViewBase
         AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush(ColorSpell), _library, _portraitIndex);
         AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush(ColorPerk),  _library, _portraitIndex);
 
-        foreach (var vm in dict.Values)
-        {
-            var last = vm.Groups
-                .SelectMany(g => g.Sources)
-                .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(s => s.LineNumber)
-                .LastOrDefault();
-            vm.OverallWinnerFileName = last != null
-                ? Path.GetFileNameWithoutExtension(last.FilePath)
-                : "";
-        }
-
         _allNpcs = dict.Values
             .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -529,7 +517,6 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
     public string SubText               { get; set; } = "";
     public string FormId                { get; set; } = "";
     public string NormalizedKey         { get; set; } = "";
-    public string OverallWinnerFileName { get; set; } = "";
     public ObservableCollection<NpcConflictGroup> Groups { get; } = new();
 
     private bool _hasAppearance;

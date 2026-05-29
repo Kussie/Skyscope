@@ -140,7 +140,6 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="20"/>
                                     </Grid.ColumnDefinitions>
 
@@ -246,25 +245,8 @@
                                         </Border>
                                     </StackPanel>
 
-                                    <!-- Overall winner filename -->
-                                    <TextBlock Grid.Column="2"
-                                               Text="{Binding OverallWinnerFileName}"
-                                               FontSize="10" Foreground="#A3BE8C"
-                                               VerticalAlignment="Center" Margin="0,0,8,0"
-                                               TextTrimming="CharacterEllipsis" MaxWidth="180">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding OverallWinnerFileName}" Value="">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-
                                     <!-- Expand/collapse chevron -->
-                                    <TextBlock Grid.Column="3"
+                                    <TextBlock Grid.Column="2"
                                                FontSize="9" Foreground="#4C566A"
                                                VerticalAlignment="Center" HorizontalAlignment="Center">
                                         <TextBlock.Style>
