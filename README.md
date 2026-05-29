@@ -57,6 +57,18 @@ In all cases, when two or more mods target the same NPC with the same rule type,
 
 ---
 
+### NPC portraits / thumbnails
+
+Appearance conflicts can show a portrait of the NPC next to each source so you can see at a glance who's being changed. Portraits are opt-in and configured per plugin in the **Settings** tab.
+
+After you run an analysis, the Settings tab lists every plugin referenced by the appearance conflicts. For each one, pick a folder that contains that plugin's portrait images, then click **Save Settings** (your choices are written to `settings.json` next to the exe and remembered between launches). The red trash button next to a saved folder removes it.
+
+SkyScope finds a portrait by looking in the configured folder — including all subfolders — for an image named after the NPC's **Form ID**, shown as an 8-digit hex value in the conflict view (e.g. `000135E6`). So an NPC with Form ID `000135E6` needs a file called `000135E6.png`. Supported extensions are `.png`, `.jpg`, and `.jpeg`.
+
+The best source of ready-made portraits is this Nexus collection of NPC face thumbnails: **https://www.nexusmods.com/skyrimspecialedition/mods/97595** — its images are already named by Form ID, so you can point a plugin straight at the relevant folder and the portraits will resolve automatically.
+
+---
+
 ## Contributing
 
 Issues and pull requests are welcome.
