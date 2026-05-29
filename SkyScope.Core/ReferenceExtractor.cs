@@ -22,8 +22,7 @@ public class ReferenceExtractor
                 foreach (var npcRef in rule.TargetNpcs)
                     RegisterNpcRef(library, npcRef);
 
-                if (rule.RuleType is RuleType.Spell or RuleType.Perk)
-                    RegisterSpellPerkValue(library, rule.RuleValue);
+                RegisterRuleValue(library, rule);
             }
 
         // SPID NPC refs (all rule types)
@@ -37,8 +36,7 @@ public class ReferenceExtractor
                 if (ff.Plugin != null && ff.FormId != null)
                     library.RegisterFormIdRef(ff.Plugin, ff.FormId, KnownRecordType.Unknown);
 
-            if (rule.RuleType is RuleType.Spell or RuleType.Perk)
-                RegisterSpellPerkValue(library, rule.RuleValue);
+            RegisterRuleValue(library, rule);
         }
 
         // BOS object refs
@@ -64,7 +62,24 @@ public class ReferenceExtractor
         }
     }
 
-    private static void RegisterSpellPerkValue(ModReferenceLibrary library, string ruleValue)
+    // Registers the rule's value (the distributed record) so its display name can be resolved:
+    // spell/perk records for Spell/Perk rules, outfit (OTFT) records for OutfitDefault rules.
+    private static void RegisterRuleValue(ModReferenceLibrary library, DistributionRule rule)
+    {
+        var type = rule.RuleType switch
+        {
+            RuleType.Spell         => KnownRecordType.Spell,
+            RuleType.Perk          => KnownRecordType.Perk,
+            RuleType.OutfitDefault => KnownRecordType.Outfit,
+            _                      => (KnownRecordType?)null
+        };
+        if (type is null) return;
+
+        RegisterFormValue(library, rule.RuleValue, type.Value);
+    }
+
+    // Registers each Plugin|FormId / 0x~Plugin / plain-EditorId token in a rule value.
+    private static void RegisterFormValue(ModReferenceLibrary library, string ruleValue, KnownRecordType type)
     {
         if (string.IsNullOrEmpty(ruleValue)) return;
 
@@ -80,7 +95,7 @@ public class ReferenceExtractor
                 library.RegisterFormIdRef(
                     token[(tildeIdx + 1)..].Trim(),
                     token[..tildeIdx].Trim(),
-                    KnownRecordType.Spell);
+                    type);
                 continue;
             }
 
@@ -91,13 +106,13 @@ public class ReferenceExtractor
                 library.RegisterFormIdRef(
                     token[..pipeIdx].Trim(),
                     token[(pipeIdx + 1)..].Trim(),
-                    KnownRecordType.Spell);
+                    type);
                 continue;
             }
 
             // Plain EditorId (not 0x or decimal)
             if (!token.StartsWith("0x", StringComparison.OrdinalIgnoreCase) && !uint.TryParse(token, out _))
-                library.RegisterEditorIdRef(token, KnownRecordType.Spell);
+                library.RegisterEditorIdRef(token, type);
         }
     }
 

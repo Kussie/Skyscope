@@ -11,8 +11,7 @@ namespace SkyScope.Core;
 // and header-only targeted scan for base object GRUPs (only plugins with BOS refs).
 public class PluginEnricher
 {
-    private static readonly HashSet<string> SpelPerkGroups = new() { "SPEL", "PERK" };
-    private static readonly HashSet<string> ObjectGroups   = new()
+    private static readonly HashSet<string> ObjectGroups = new()
         { "STAT", "FURN", "DOOR", "ACTI", "CONT", "MISC", "MSTT", "TREE" };
 
     public void Enrich(ModReferenceLibrary library, string skyrimGameDirectory, IProgress<string>? progress = null)
@@ -71,11 +70,14 @@ public class PluginEnricher
                     progress?.Report($"  {fileName}: {npcResult.Npcs.Count} NPC record(s){strInfo}");
                 }
 
-                // ── Targeted SPEL/PERK scan (only for referenced plugins) ──
-                if (library.SpelPerkRefPlugins.Contains(fileName))
+                // ── Targeted SPEL/PERK/OTFT scan (only for referenced plugins) ──
+                var formGroups = new HashSet<string>();
+                if (library.SpelPerkRefPlugins.Contains(fileName)) { formGroups.Add("SPEL"); formGroups.Add("PERK"); }
+                if (library.OutfitRefPlugins.Contains(fileName))     formGroups.Add("OTFT");
+                if (formGroups.Count > 0)
                 {
-                    var spelResult = formParser.Parse(pluginPath, SpelPerkGroups);
-                    foreach (var entry in spelResult.Entries)
+                    var formResult = formParser.Parse(pluginPath, formGroups);
+                    foreach (var entry in formResult.Entries)
                         library.EnrichSpellPerk(entry.OriginalPlugin, entry.LocalFormId, entry.EditorId, entry.FullName);
                 }
 

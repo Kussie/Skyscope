@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace SkyScope.Models;
 
-public enum KnownRecordType { Unknown, Npc, Spell, Perk, Static, Furniture, Door, Activator, Container, Other }
+public enum KnownRecordType { Unknown, Npc, Spell, Perk, Outfit, Static, Furniture, Door, Activator, Container, Other }
 
 // NPC attributes extracted from the plugin binary (race, class, factions, keywords, gender).
 // Populated by PluginEnricher via EsmNpcParser; used by SpidFilterEvaluator.
@@ -65,6 +65,9 @@ public class ModReferenceLibrary
     // Plugins that have at least one SPEL/PERK ref (for targeted spell/perk enrichment)
     private readonly HashSet<string> _spelPerkRefPlugins = new(StringComparer.OrdinalIgnoreCase);
 
+    // Plugins that have at least one OTFT ref (for targeted outfit enrichment)
+    private readonly HashSet<string> _outfitRefPlugins = new(StringComparer.OrdinalIgnoreCase);
+
     private int _npcRecordCount;
 
     public int NpcRecordCount => _npcRecordCount;
@@ -96,14 +99,22 @@ public class ModReferenceLibrary
                 ExpectedType = type
             };
 
-        if (type is not KnownRecordType.Npc and not KnownRecordType.Spell and not KnownRecordType.Perk)
+        switch (type)
         {
-            _bosRefs.Add(key);
-            _bosRefPlugins.Add(plugin);
+            case KnownRecordType.Npc:
+                break; // NPCs are covered by the full NPC_ scan
+            case KnownRecordType.Spell:
+            case KnownRecordType.Perk:
+                _spelPerkRefPlugins.Add(plugin);
+                break;
+            case KnownRecordType.Outfit:
+                _outfitRefPlugins.Add(plugin);
+                break;
+            default: // Unknown + base-object types → targeted BOS object scan
+                _bosRefs.Add(key);
+                _bosRefPlugins.Add(plugin);
+                break;
         }
-
-        if (type is KnownRecordType.Spell or KnownRecordType.Perk)
-            _spelPerkRefPlugins.Add(plugin);
     }
 
     public void RegisterEditorIdRef(string editorId, KnownRecordType type)
@@ -233,6 +244,8 @@ public class ModReferenceLibrary
         _bosRefs.Contains((originalPlugin.ToLowerInvariant(), localFormId));
 
     public IReadOnlySet<string> SpelPerkRefPlugins => _spelPerkRefPlugins;
+
+    public IReadOnlySet<string> OutfitRefPlugins => _outfitRefPlugins;
 
     // ── Queries: NPC conflict detection (replaces NpcNameDatabase) ────────────
 
