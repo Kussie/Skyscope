@@ -21,6 +21,13 @@ public class PluginEnricher
 
         progress?.Report($"Scanning {pluginPaths.Count} plugin(s) for NPC records…");
 
+        // Build string table cache from BSA archives once before the main loop.
+        // This covers vanilla plugins whose .STRINGS files are packed inside BSAs.
+        var dataDir   = Path.Combine(skyrimGameDirectory, "Data");
+        var bsaCache  = BsaStringExtractor.ExtractStringTables(dataDir);
+        if (bsaCache.Count > 0)
+            progress?.Report($"  String tables loaded from BSA: {bsaCache.Count} plugin(s)");
+
         var npcParser  = new EsmNpcParser();
         var formParser = new EsmFormParser();
         int i = 0;
@@ -34,7 +41,7 @@ public class PluginEnricher
             try
             {
                 // ── Full NPC scan ──────────────────────────────────────────
-                var npcResult = npcParser.Parse(pluginPath);
+                var npcResult = npcParser.Parse(pluginPath, bsaCache);
 
                 foreach (var npc in npcResult.Npcs)
                 {
@@ -55,7 +62,14 @@ public class PluginEnricher
                 }
 
                 if (npcResult.Npcs.Count > 0)
-                    progress?.Report($"  {fileName}: {npcResult.Npcs.Count} NPC record(s)");
+                {
+                    var strInfo = npcResult.IsLocalised
+                        ? npcResult.StringTableEntries > 0
+                            ? $", strings: {npcResult.StringTableEntries:N0} entries"
+                            : ", strings: NOT FOUND"
+                        : "";
+                    progress?.Report($"  {fileName}: {npcResult.Npcs.Count} NPC record(s){strInfo}");
+                }
 
                 // ── Targeted SPEL/PERK scan (only for referenced plugins) ──
                 if (library.SpelPerkRefPlugins.Contains(fileName))

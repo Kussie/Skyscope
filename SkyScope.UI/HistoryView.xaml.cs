@@ -6,7 +6,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Threading;
 using SkyScope.Core;
 using SkyScope.Models;
 
@@ -77,7 +76,6 @@ public class HistoryItemViewModel : INotifyPropertyChanged, IConflictItemVm
         {
             ModificationType.LineCommented => "Line commented out",
             ModificationType.RuleModified  => "Rule modified",
-            ModificationType.RuleSplit     => "Rule split",
             _                              => "Changed"
         };
 
@@ -100,7 +98,6 @@ public partial class HistoryView : ConflictViewBase, INotifyPropertyChanged
     private HistoryStore?                        _store;
     private List<HistoryItemViewModel>           _allItems   = new();
     private ObservableCollection<HistoryItemViewModel> _listSource = new();
-    private DispatcherTimer?                     _searchTimer;
 
     private DiffMode _diffMode = DiffMode.InlineDiff;
     public DiffMode DiffMode
@@ -164,17 +161,8 @@ public partial class HistoryView : ConflictViewBase, INotifyPropertyChanged
         RecordCountText.Text = $"{_allItems.Count} / {HistoryStore.MaxRecords} changes";
     }
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        _searchTimer?.Stop();
-        _searchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
-        _searchTimer.Tick += (_, _) =>
-        {
-            _searchTimer.Stop();
-            if (_allItems.Count > 0) ApplyFilter();
-        };
-        _searchTimer.Start();
-    }
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
+        StartSearchDebounce(ApplyFilter, () => _allItems.Count > 0);
 
     private void InlineDiffButton_Click(object sender, RoutedEventArgs e) =>
         DiffMode = DiffMode.InlineDiff;

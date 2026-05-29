@@ -12,7 +12,7 @@ public class ReferenceExtractor
     public void Extract(
         ModReferenceLibrary    library,
         List<ModConfiguration> skyPatcherConfigs,
-        List<SkyPatcherRule>   spidRules,
+        List<DistributionRule>   spidRules,
         List<BosSwapRule>      bosRules)
     {
         // SkyPatcher NPC refs (all rule types)

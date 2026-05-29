@@ -20,7 +20,7 @@ public class SpidFilterEvaluator
 
     // Returns the EditorIds (lowercase) of all library NPCs that match the rule's filter
     // criteria. Returns an empty list for pure direct-ref rules (nothing filter-based to expand).
-    public List<string> ExpandFilterTargets(SkyPatcherRule rule)
+    public List<string> ExpandFilterTargets(DistributionRule rule)
     {
         bool hasStringFilters = HasFilterEntries(rule.SpidStringFilters);
         bool hasFormFilters   = rule.SpidFormFilters.Count > 0;
@@ -42,7 +42,7 @@ public class SpidFilterEvaluator
         return results;
     }
 
-    private bool MatchesRule(RecordInfo npc, SkyPatcherRule rule)
+    private bool MatchesRule(RecordInfo npc, DistributionRule rule)
     {
         // Trait filter — evaluated first as it is cheapest
         if (rule.SpidTraitFilter != null && !MatchesTrait(npc, rule.SpidTraitFilter))

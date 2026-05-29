@@ -45,6 +45,119 @@ internal static class EsmBinaryUtils
         return (true, masters, isLocalised);
     }
 
+    // Invoked for each live (non-deleted) record inside a target top-level GRUP.
+    // recData is already decompressed; localFormId is masked to 24 bits.
+    internal delegate void RecordCallback(
+        string originalPlugin, uint localFormId, byte[] recData, List<string> masters, bool isLocalised);
+
+    // Opens a plugin, reads its header, and walks every record inside the requested top-level
+    // GRUP labels, invoking handler for each live record. Centralises the GRUP/record/decompress
+    // walk shared by the NPC and SPEL/PERK parsers. Returns the header info for the caller.
+    internal static (bool Valid, List<string> Masters, bool IsLocalised) ForEachRecord(
+        string filePath, HashSet<string> targetGroups, RecordCallback handler)
+    {
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: false);
+
+        var (valid, masters, isLocalised) = ReadPluginHeader(reader, stream);
+        if (!valid) return (false, masters, isLocalised);
+
+        var pluginName = Path.GetFileName(filePath);
+
+        while (stream.Position < stream.Length - 23)
+        {
+            if (ReadTag(reader) != "GRUP") break;
+
+            var grupSize = reader.ReadUInt32();
+            if (grupSize < 24) break;
+
+            var label     = ReadTag(reader);
+            var groupType = reader.ReadInt32();
+            reader.ReadBytes(8); // Stamp(2) + Unknown(2) + Version(2) + Unknown(2)
+
+            var contentEnd = Math.Min(stream.Position + (long)(grupSize - 24), stream.Length);
+
+            if (targetGroups.Contains(label) && groupType == 0)
+                WalkGroup(reader, stream, contentEnd, masters, pluginName, label, isLocalised, handler);
+
+            stream.Position = contentEnd;
+        }
+
+        return (true, masters, isLocalised);
+    }
+
+    private static void WalkGroup(
+        BinaryReader reader, Stream stream, long groupEnd, List<string> masters,
+        string pluginName, string expectedTag, bool isLocalised, RecordCallback handler)
+    {
+        while (stream.Position < groupEnd - 23)
+        {
+            var tag = ReadTag(reader);
+
+            // Nested GRUP (e.g. cell/world children) — skip wholesale.
+            if (tag == "GRUP")
+            {
+                var size = reader.ReadUInt32();
+                if (size < 24) return;
+                reader.ReadBytes(16);
+                stream.Position = Math.Min(stream.Position + (long)(size - 24), groupEnd);
+                continue;
+            }
+
+            var dataSize = reader.ReadUInt32();
+            var flags    = reader.ReadUInt32();
+            var formId   = reader.ReadUInt32();
+            reader.ReadBytes(8); // Revision(4) + Version(2) + Unknown(2)
+
+            var recordEnd = Math.Min(stream.Position + dataSize, groupEnd);
+
+            // Only hand back records of the expected type; skip others (and deleted records).
+            if (tag != expectedTag || (flags & FlagDeleted) != 0)
+            {
+                stream.Position = recordEnd;
+                continue;
+            }
+
+            var (origPlugin, localFormId) = ResolveOriginPlugin(formId, masters, pluginName);
+
+            byte[] recData;
+            try
+            {
+                if ((flags & FlagCompressed) != 0)
+                {
+                    var uncompSize = reader.ReadUInt32();
+                    var compSize   = (int)(recordEnd - stream.Position);
+                    if (compSize <= 0) { stream.Position = recordEnd; continue; }
+                    recData = ZlibDecompress(reader.ReadBytes(compSize), (int)uncompSize);
+                }
+                else
+                {
+                    recData = reader.ReadBytes((int)(recordEnd - stream.Position));
+                }
+            }
+            catch { stream.Position = recordEnd; continue; } // skip malformed/truncated records
+
+            handler(origPlugin, localFormId, recData, masters, isLocalised);
+            stream.Position = recordEnd;
+        }
+    }
+
+    // Maps a raw record FormID to its originating plugin and 24-bit local FormID.
+    // A new record's master byte equals the master count (the plugin implicitly trails its own
+    // master list); override records index into the master list.
+    // NOTE: light-master (ESL, master byte 0xFE) override references cannot be attributed to the
+    // exact light master without the global light-master order, so they fall back to the current
+    // plugin. Base records defined in an ESL are still indexed correctly (their master byte equals
+    // the master count), so name resolution by Plugin|FormId is unaffected.
+    internal static (string Plugin, uint LocalFormId) ResolveOriginPlugin(
+        uint formId, List<string> masters, string pluginName)
+    {
+        byte masterIdx   = (byte)(formId >> 24);
+        uint localFormId = formId & 0x00FFFFFF;
+        string plugin    = masterIdx < masters.Count ? masters[masterIdx] : pluginName;
+        return (plugin, localFormId);
+    }
+
     // Parses EDID and FULL subrecords from an already-decompressed record byte array.
     internal static (string? EditorId, string? Name) ParseEdidFull(byte[] data, bool isLocalised)
     {

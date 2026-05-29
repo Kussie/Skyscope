@@ -151,11 +151,24 @@ public class ModReferenceLibrary
         if (!string.IsNullOrEmpty(editorId))
         {
             _npcEditorIds.Add(editorId);
-            _byEditorId[editorId] = ri;
+            // Distinct records (vanilla + replacer/converter proxies) can share an EditorId.
+            // Keep the one with the best name: a real display name (differs from the EditorId)
+            // beats a name that merely echoes the EditorId, which beats no name at all. This
+            // stops a proxy whose FULL just copies the EditorId from hiding the real vanilla name.
+            if (!_byEditorId.TryGetValue(editorId, out var prior)
+                || NameQuality(ri, editorId) >= NameQuality(prior, editorId))
+                _byEditorId[editorId] = ri;
         }
 
         if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(editorId))
             _byName[name] = ri;
+    }
+
+    // 2 = real display name (differs from EditorId), 1 = name echoes EditorId, 0 = no name.
+    private static int NameQuality(RecordInfo ri, string editorId)
+    {
+        if (string.IsNullOrEmpty(ri.ResolvedName)) return 0;
+        return string.Equals(ri.ResolvedName, editorId, StringComparison.OrdinalIgnoreCase) ? 1 : 2;
     }
 
     // Returns all enriched NPC RecordInfos. Used by SpidFilterEvaluator.
@@ -285,11 +298,12 @@ public class ModReferenceLibrary
         return (ri.ResolvedEditorId, ri.ResolvedName);
     }
 
-    public string? ResolveEditorIdByLocalFormId(string hexFormId) =>
-        ResolveByLocalFormId(hexFormId).editorId;
-
     public string? FindEditorIdByName(string name) =>
         _byName.TryGetValue(name, out var ri) ? ri.ResolvedEditorId : null;
+
+    // Resolves an NPC's full display name from its EditorId (used for EditorId-keyed conflicts).
+    public string? ResolveNameByEditorId(string editorId) =>
+        _byEditorId.TryGetValue(editorId, out var ri) ? ri.ResolvedName : null;
 
     public bool IsNpcEditorId(string editorId) => _npcEditorIds.Contains(editorId);
 
@@ -321,8 +335,6 @@ public class ModReferenceLibrary
     }
 
     // ── Load-order filter (replaces FormNameDatabase.HasAnyLoadedPlugin) ──────
-
-    public bool IsPluginLoaded(string pluginName) => _loadedPlugins.Contains(pluginName);
 
     public bool HasAnyLoadedPlugin(string ruleValue)
     {

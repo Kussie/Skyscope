@@ -9,15 +9,13 @@ namespace SkyScope.Core;
 
 public class SpidConfigParser
 {
-    public (List<SkyPatcherRule> Rules, int FilesScanned, List<string> Errors) LoadDistributionRulesFromDirectory(string dataPath)
+    public (List<DistributionRule> Rules, int FilesScanned, List<string> Errors) LoadDistributionRulesFromDirectory(string dataPath)
     {
         if (!Directory.Exists(dataPath))
             return (new(), 0, []);
 
-        var files = Directory.GetFiles(dataPath, "*_DISTR.ini", SearchOption.AllDirectories)
-            .Where(f => !Path.GetFileName(f).Equals("__folder_managed_by_vortex", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        var rules  = new List<SkyPatcherRule>();
+        var files = ConfigFiles.Enumerate(dataPath, "*_DISTR.ini");
+        var rules  = new List<DistributionRule>();
         var errors = new List<string>();
 
         foreach (var filePath in files)
@@ -48,7 +46,7 @@ public class SpidConfigParser
         };
     }
 
-    private static IEnumerable<SkyPatcherRule> ParseFile(string filePath)
+    private static IEnumerable<DistributionRule> ParseFile(string filePath)
     {
         var lines = File.ReadAllLines(filePath);
 
@@ -213,7 +211,7 @@ public class SpidConfigParser
             string? preceding = i > 0               ? lines[i - 1] : null;
             string? following = i < lines.Length - 1 ? lines[i + 1] : null;
 
-            yield return new SkyPatcherRule
+            yield return new DistributionRule
             {
                 TargetNpcs        = npcRefs,
                 SpidStringFilters = stringFilters,

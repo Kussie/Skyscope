@@ -38,12 +38,8 @@ public class SkyPatcherConfigParser
         var configs = new List<ModConfiguration>();
         var errors  = new List<string>();
 
-        // Sort by full path so configs are processed in SkyPatcher's load order:
-        // folders and files sorted alphanumerically, with the full path as the sort key.
-        var iniFiles = Directory.GetFiles(directoryPath, "*.ini", SearchOption.AllDirectories)
-            .Where(f => !Path.GetFileName(f).Equals("__folder_managed_by_vortex", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        // Sorted by full path so configs are processed in SkyPatcher's load order.
+        var iniFiles = ConfigFiles.Enumerate(directoryPath, "*.ini");
 
         foreach (var filePath in iniFiles)
         {
@@ -94,7 +90,7 @@ public class SkyPatcherConfigParser
     // A single line can carry both a filter and multiple rule types, e.g.:
     //   filterByNpcs=Aela:copyVisualStyle=X:skin=Y
     // Split the whole line into key=value segments so every rule type is captured.
-    private IEnumerable<SkyPatcherRule> ParseRuleLine(
+    private IEnumerable<DistributionRule> ParseRuleLine(
         string line, string sourceFile, int lineNumber, string? preceding, string? following)
     {
         var trimmed = line.Trim();
@@ -153,7 +149,7 @@ public class SkyPatcherConfigParser
 
         foreach (var (ruleType, ruleValue) in rulePairs)
         {
-            yield return new SkyPatcherRule
+            yield return new DistributionRule
             {
                 TargetNpcs    = targetNpcs,
                 RuleType      = ruleType,

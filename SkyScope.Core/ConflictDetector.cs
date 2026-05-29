@@ -55,7 +55,8 @@ public class ConflictDetector
             }
         }
 
-        var summary = new ConflictSummary { TotalFilesScanned = configurations.Count };
+        // TotalFilesScanned is set by the caller from the actual on-disk scan count.
+        var summary = new ConflictSummary();
 
         BuildConflicts(appearanceMap, summary.AppearanceConflicts);
         BuildConflicts(skinMap,       summary.SkinConflicts);

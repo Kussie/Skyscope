@@ -77,7 +77,7 @@ public class SpidTraitFilter
     public bool? Dead       { get; set; }
 }
 
-public class SkyPatcherRule
+public class DistributionRule
 {
     public List<NpcReference>   TargetNpcs        { get; set; } = [];
     public List<SpidStringFilter> SpidStringFilters { get; set; } = [];
@@ -114,7 +114,7 @@ public class ModConfiguration
 {
     public string ModName { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
-    public List<SkyPatcherRule> Rules { get; set; } = [];
+    public List<DistributionRule> Rules { get; set; } = [];
 }
 
 public class ConflictEntry

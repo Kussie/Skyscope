@@ -14,9 +14,7 @@ public class BosConfigParser
         if (!Directory.Exists(dataPath))
             return (new(), 0, []);
 
-        var files = Directory.GetFiles(dataPath, "*_SWAP.ini", SearchOption.AllDirectories)
-            .Where(f => !Path.GetFileName(f).Equals("__folder_managed_by_vortex", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        var files = ConfigFiles.Enumerate(dataPath, "*_SWAP.ini");
         var rules  = new List<BosSwapRule>();
         var errors = new List<string>();
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace SkyScope.Models;
 
-public enum ModificationType { LineCommented, RuleModified, RuleSplit }
+public enum ModificationType { LineCommented, RuleModified }
 public enum ChangeStatus     { Applied, Reverted, NotFound }
 
 public class ChangeRecord
