@@ -528,13 +528,13 @@
             </ScrollViewer>
             </TabItem>
 
-            <TabItem x:Name="NpcTab" Header="NPC Based Conflicts" IsEnabled="False">
+            <TabItem x:Name="NpcTab" Header="NPCs" IsEnabled="False">
                 <Grid Margin="16">
                     <local:NpcConflictView x:Name="NpcConflictViewControl"/>
                 </Grid>
             </TabItem>
 
-            <TabItem x:Name="BosTab" Header="BOS Conflicts" IsEnabled="False">
+            <TabItem x:Name="BosTab" Header="Base Object Swapper" IsEnabled="False">
                 <Grid Margin="16">
                     <local:BosConflictView x:Name="BosConflictViewControl"/>
                 </Grid>
