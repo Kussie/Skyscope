@@ -161,6 +161,19 @@
                                             <TextBlock Text="Editor ID: " FontSize="10" Foreground="#8C9BB5"/>
                                             <TextBlock Text="{Binding SubText}" FontSize="10" Foreground="#B8C5D5"/>
                                         </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding FormId}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="Form ID: " FontSize="10" Foreground="#8C9BB5"/>
+                                            <TextBlock Text="{Binding FormId}" FontSize="10" Foreground="#B8C5D5"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Type badges A / S / O / Sp / P -->
@@ -289,7 +302,13 @@
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <Border Style="{StaticResource ConflictSourceCard}">
-                                                                <StackPanel>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <StackPanel Grid.Column="0">
 
                                                                     <!-- Row 1: filename + badges -->
                                                                     <Grid>
@@ -364,6 +383,25 @@
                                                                                    TextTrimming="CharacterEllipsis"/>
                                                                     </StackPanel>
 
+                                                                    <!-- Row 2b: source plugin (Appearance only) -->
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                                        <StackPanel.Style>
+                                                                            <Style TargetType="StackPanel">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding RulePlugin}" Value="">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </StackPanel.Style>
+                                                                        <TextBlock Text="Plugin: "
+                                                                                   FontSize="10" Foreground="#8C9BB5"
+                                                                                   Margin="0,0,5,0"/>
+                                                                        <TextBlock Text="{Binding RulePlugin}"
+                                                                                   FontSize="10" Foreground="#A0AFBE"
+                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                    </StackPanel>
+
                                                                     <!-- Row 3: code context -->
                                                                     <local:CodeContextBlock
                                                                         HasPrecedingLine="{Binding HasPrecedingLine}"
@@ -376,8 +414,8 @@
                                                                         FollowingLine="{Binding FollowingLine}"
                                                                         Margin="0,6,0,0"/>
 
-                                                                    <!-- Row 4: file path -->
-                                                                    <TextBlock Text="{Binding FilePath}"
+                                                                    <!-- Row 4: file path (relative to Skyrim root) -->
+                                                                    <TextBlock Text="{Binding DisplayPath}"
                                                                                FontSize="9" Foreground="#8C99A8"
                                                                                Margin="0,4,0,0"
                                                                                TextTrimming="CharacterEllipsis"/>
@@ -427,7 +465,50 @@
                                                                                 Style="{StaticResource ConflictAccentButton}"/>
                                                                     </StackPanel>
 
-                                                                </StackPanel>
+                                                                    </StackPanel>
+
+                                                                    <!-- Per-source portrait (Appearance sources only). Fixed width;
+                                                                         height tracks the card content so card height is unchanged. -->
+                                                                    <Border Grid.Column="1" Width="120" Margin="10,0,0,0"
+                                                                            Background="#272C38" CornerRadius="4"
+                                                                            VerticalAlignment="Stretch">
+                                                                        <Border.Style>
+                                                                            <Style TargetType="Border">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding ShowPortrait}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Border.Style>
+                                                                        <Grid>
+                                                                            <!-- Placeholder shown when this source has no portrait -->
+                                                                            <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                                                <StackPanel.Style>
+                                                                                    <Style TargetType="StackPanel">
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding HasPortrait}" Value="True">
+                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </StackPanel.Style>
+                                                                                <Viewbox Width="40" Height="40" HorizontalAlignment="Center">
+                                                                                    <Path Fill="#4C566A"
+                                                                                          Data="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                                                                </Viewbox>
+                                                                                <TextBlock Text="No portrait" FontSize="9" Foreground="#4C566A"
+                                                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                                                            </StackPanel>
+                                                                            <!-- Actual portrait (drawn over the placeholder when set) -->
+                                                                            <Image Source="{Binding PortraitPath}"
+                                                                                   Stretch="Uniform" StretchDirection="DownOnly"
+                                                                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                        </Grid>
+                                                                    </Border>
+
+                                                                </Grid>
                                                             </Border>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>

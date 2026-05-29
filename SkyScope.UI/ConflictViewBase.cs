@@ -115,6 +115,17 @@ public abstract class ConflictViewBase : UserControl
             OpenFile(src.FilePath);
     }
 
+    // Trims a full plugin/config path to one relative to the Skyrim root — i.e. starting at the
+    // "Data" folder (e.g. "H:\…\Skyrim Special Edition\Data\SKSE\…" → "Data\SKSE\…").
+    // Falls back to the full path when no Data segment is present.
+    public static string ToSkyrimRelativePath(string fullPath)
+    {
+        if (string.IsNullOrEmpty(fullPath)) return "";
+        var idx = fullPath.IndexOf(@"\Data\", StringComparison.OrdinalIgnoreCase);
+        if (idx < 0) idx = fullPath.IndexOf("/Data/", StringComparison.OrdinalIgnoreCase);
+        return idx >= 0 ? fullPath[(idx + 1)..] : fullPath;
+    }
+
     protected void OpenFile(string filePath)
     {
         try

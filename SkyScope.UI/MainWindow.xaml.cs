@@ -40,11 +40,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        EnsureAppFilesExist();
         _historyStore.Load();
         NpcConflictViewControl.HistoryStore = _historyStore;
         BosConflictViewControl.HistoryStore = _historyStore;
         HistoryViewControl.Refresh(_historyStore);
         LoadSettings();
+        LoadAppSettings();
         LoadVersion();
     }
 
@@ -214,7 +216,9 @@ public partial class MainWindow : Window
             DisplayResults(summary, bosSummary);
 
             WriteAnalysisLog(skyrimPath, configs, spFilesScanned, spErrors, spidRules, spidFileCount, spidErrors, bosRules, bosFileCount, bosErrors);
+            NpcConflictViewControl.ThumbnailDirectories = _appSettings.PluginThumbnailDirectories;
             NpcConflictViewControl.Populate(summary, library);
+            MergeAppearancePlugins(NpcConflictViewControl.AppearancePlugins);
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;
 

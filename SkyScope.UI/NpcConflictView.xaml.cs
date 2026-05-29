@@ -29,6 +29,17 @@ public partial class NpcConflictView : ConflictViewBase
     private ModReferenceLibrary?  _library;
 
     public HistoryStore? HistoryStore { get; set; }
+
+    // Distinct plugin names referenced by appearance-conflict sources, surfaced for the Settings tab.
+    public IReadOnlyList<string> AppearancePlugins { get; private set; } = Array.Empty<string>();
+
+    // Plugin -> configured thumbnail folder (from settings.json). Set before Populate.
+    public IReadOnlyDictionary<string, string>? ThumbnailDirectories { get; set; }
+
+    // Plugin -> (FormId without extension -> image path), built once per Populate from the
+    // configured thumbnail folders so each source can resolve its portrait by O(1) lookup.
+    private Dictionary<string, Dictionary<string, string>> _portraitIndex = new(StringComparer.OrdinalIgnoreCase);
+
     private bool _filterA  = true;
     private bool _filterS  = true;
     private bool _filterO  = true;
@@ -54,11 +65,13 @@ public partial class NpcConflictView : ConflictViewBase
         var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
         var dict = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
 
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush(ColorAppearance), _library);
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush(ColorSkin),       _library);
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush(ColorOutfit),     _library);
-        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush(ColorSpell), _library);
-        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush(ColorPerk),  _library);
+        _portraitIndex = BuildPortraitIndex();
+
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush(ColorAppearance), _library, _portraitIndex);
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush(ColorSkin),       _library, _portraitIndex);
+        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush(ColorOutfit),     _library, _portraitIndex);
+        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush(ColorSpell), _library, _portraitIndex);
+        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush(ColorPerk),  _library, _portraitIndex);
 
         foreach (var vm in dict.Values)
         {
@@ -74,6 +87,16 @@ public partial class NpcConflictView : ConflictViewBase
 
         _allNpcs = dict.Values
             .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        AppearancePlugins = _allNpcs
+            .SelectMany(vm => vm.Groups)
+            .Where(g => g.RuleType == RuleType.Appearance)
+            .SelectMany(g => g.Sources)
+            .Select(s => s.RulePlugin)
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         ApplyFilter();
@@ -94,7 +117,8 @@ public partial class NpcConflictView : ConflictViewBase
         RuleType ruleType,
         string label,
         SolidColorBrush badgeBrush,
-        ModReferenceLibrary? library)
+        ModReferenceLibrary? library,
+        Dictionary<string, Dictionary<string, string>> portraitIndex)
     {
         foreach (var entry in entries)
         {
@@ -108,6 +132,7 @@ public partial class NpcConflictView : ConflictViewBase
                 {
                     DisplayName   = entry.DisplayName,
                     SubText       = BuildSubText(entry),
+                    FormId        = BuildFormId(entry, library),
                     NormalizedKey = key
                 };
                 dict[key] = vm;
@@ -136,39 +161,50 @@ public partial class NpcConflictView : ConflictViewBase
             };
 
             group.Sources = new ObservableCollection<NpcTabSourceViewModel>(
-                sorted.Select((src, idx) => new NpcTabSourceViewModel
+                sorted.Select((src, idx) =>
                 {
-                    FileName            = Path.GetFileName(src.FilePath),
-                    FilePath            = src.FilePath,
-                    LineNumber          = src.LineNumber,
-                    ConflictLineText    = src.ConflictLine,
-                    PrecedingLine       = src.PrecedingLine,
-                    FollowingLine       = src.FollowingLine,
-                    LoadPosition        = idx + 1,
-                    TotalSources        = sorted.Count,
-                    RuleValue           = src.RuleValue,
-                    ResolvedRuleDisplay = library != null
-                                         ? library.ResolveRuleValue(src.RuleValue)
-                                         : src.RuleValue,
-                    RuleValueLabel      = ruleType switch
+                    var plugin = ruleType == RuleType.Appearance
+                        ? ResolveRulePlugin(src.RuleValue, library)
+                        : "";
+                    return new NpcTabSourceViewModel
                     {
-                        RuleType.Appearance    => "Copies from:",
-                        RuleType.Skin          => "Skin:",
-                        RuleType.OutfitDefault => "Outfit:",
-                        RuleType.Spell         => "Spell:",
-                        RuleType.Perk          => "Perk:",
-                        _                      => "Value:"
-                    },
-                    SourceTool          = src.SourceTool,
-                    SpidChance          = src.SpidChance,
-                    SpidNpcIdentifier   = src.SpidNpcIdentifier,
-                    IsAdditive          = isAdditive,
-                    IsProbabilistic     = allProbabilistic,
-                    IsWinner            = !isAdditive && !allProbabilistic &&
-                                         winner != null &&
-                                         string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
-                                         src.LineNumber == winner.LineNumber,
-                    Group               = group
+                        FileName            = Path.GetFileName(src.FilePath),
+                        FilePath            = src.FilePath,
+                        LineNumber          = src.LineNumber,
+                        ConflictLineText    = src.ConflictLine,
+                        PrecedingLine       = src.PrecedingLine,
+                        FollowingLine       = src.FollowingLine,
+                        LoadPosition        = idx + 1,
+                        TotalSources        = sorted.Count,
+                        RuleValue           = src.RuleValue,
+                        ResolvedRuleDisplay = library != null
+                                             ? library.ResolveRuleValue(src.RuleValue)
+                                             : src.RuleValue,
+                        RuleValueLabel      = ruleType switch
+                        {
+                            RuleType.Appearance    => "Copies from:",
+                            RuleType.Skin          => "Skin:",
+                            RuleType.OutfitDefault => "Outfit:",
+                            RuleType.Spell         => "Spell:",
+                            RuleType.Perk          => "Perk:",
+                            _                      => "Value:"
+                        },
+                        RulePlugin          = plugin,
+                        ShowPortrait        = ruleType == RuleType.Appearance,
+                        PortraitPath        = ruleType == RuleType.Appearance
+                                             ? ResolvePortraitPath(portraitIndex, plugin, vm.FormId)
+                                             : null,
+                        SourceTool          = src.SourceTool,
+                        SpidChance          = src.SpidChance,
+                        SpidNpcIdentifier   = src.SpidNpcIdentifier,
+                        IsAdditive          = isAdditive,
+                        IsProbabilistic     = allProbabilistic,
+                        IsWinner            = !isAdditive && !allProbabilistic &&
+                                             winner != null &&
+                                             string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
+                                             src.LineNumber == winner.LineNumber,
+                        Group               = group
+                    };
                 }));
 
             vm.Groups.Add(group);
@@ -179,6 +215,117 @@ public partial class NpcConflictView : ConflictViewBase
             else if (ruleType == RuleType.Spell)         vm.HasSpell      = true;
             else if (ruleType == RuleType.Perk)          vm.HasPerk       = true;
         }
+    }
+
+    // Resolves the source plugin for an Appearance rule value: the inline plugin token when present
+    // ("Plugin.esp|FormId" / "0xFormId~Plugin.esp"), otherwise the owning plugin of the referenced
+    // EditorId looked up from the enriched library.
+    private static string ResolveRulePlugin(string ruleValue, ModReferenceLibrary? library)
+    {
+        var inline = ExtractPlugin(ruleValue);
+        if (!string.IsNullOrEmpty(inline)) return inline;
+
+        if (library == null || string.IsNullOrEmpty(ruleValue)) return "";
+
+        var token = ruleValue.Split(',')[0].Trim();
+        if (token.Length == 0 || token.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) return "";
+
+        return library.ResolvePluginByEditorId(token) ?? "";
+    }
+
+    // Re-resolves portraits on an already-populated view (e.g. after thumbnail folders change in
+    // Settings). No-op until an analysis has populated the view.
+    public void RefreshPortraits()
+    {
+        if (_lastSummary != null) Populate(_lastSummary);
+    }
+
+    // Indexes the configured thumbnail folders: for each plugin with a valid folder, maps every
+    // png/jpg/jpeg file (by name without extension) to its full path, scanning subdirectories.
+    private Dictionary<string, Dictionary<string, string>> BuildPortraitIndex()
+    {
+        var index = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        if (ThumbnailDirectories == null) return index;
+
+        foreach (var (plugin, dir) in ThumbnailDirectories)
+        {
+            if (string.IsNullOrWhiteSpace(plugin) || string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+                continue;
+
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories))
+                {
+                    var ext = Path.GetExtension(file);
+                    if (!ext.Equals(".png",  StringComparison.OrdinalIgnoreCase) &&
+                        !ext.Equals(".jpg",  StringComparison.OrdinalIgnoreCase) &&
+                        !ext.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var name = Path.GetFileNameWithoutExtension(file);
+                    map.TryAdd(name, file);
+                }
+            }
+            catch { /* unreadable folder — leave whatever was indexed */ }
+
+            index[plugin] = map;
+        }
+
+        return index;
+    }
+
+    // Looks up the portrait for a source by its plugin's configured folder and the NPC FormId
+    // (e.g. "000135E6" → "…\000135E6.png"). Returns null when unset or not found.
+    private static string? ResolvePortraitPath(
+        Dictionary<string, Dictionary<string, string>> portraitIndex, string plugin, string formId)
+    {
+        if (string.IsNullOrEmpty(plugin) || string.IsNullOrEmpty(formId)) return null;
+        return portraitIndex.TryGetValue(plugin, out var map) && map.TryGetValue(formId, out var path)
+            ? path
+            : null;
+    }
+
+    // Extracts the plugin name from a rule's source reference: "Plugin.esp|FormId" (SkyPatcher)
+    // or "0xFormId~Plugin.esp" (SPID). Returns "" for plain EditorId references (no plugin).
+    private static string ExtractPlugin(string ruleValue)
+    {
+        if (string.IsNullOrEmpty(ruleValue)) return "";
+
+        var token = ruleValue.Split(',')[0].Trim();
+
+        var tildeIdx = token.IndexOf('~');
+        if (tildeIdx >= 0) return token[(tildeIdx + 1)..].Trim();
+
+        var pipeIdx = token.IndexOf('|');
+        if (pipeIdx >= 0) return token[..pipeIdx].Trim();
+
+        return "";
+    }
+
+    // Resolves the NPC's local FormId for display: the enriched record's id (looked up by EditorId),
+    // falling back to a direct RecordId reference. Returns "" when unknown.
+    private static string BuildFormId(ConflictEntry entry, ModReferenceLibrary? library)
+    {
+        if (!string.IsNullOrEmpty(entry.ResolvedEditorId) && library != null)
+        {
+            var fid = library.ResolveFormIdByEditorId(entry.ResolvedEditorId);
+            if (!string.IsNullOrEmpty(fid)) return FormatFormId(fid);
+        }
+
+        if (entry.NpcRef.RefType == NpcRefType.RecordId)
+            return FormatFormId(entry.NpcRef.FormId);
+
+        return "";
+    }
+
+    // Normalises a hex FormId to an 8-digit uppercase id, master byte 00 (e.g. "135E6" → "000135E6").
+    private static string FormatFormId(string? rawHex)
+    {
+        if (string.IsNullOrEmpty(rawHex)) return "";
+        var hex = rawHex.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? rawHex[2..] : rawHex;
+        if (!uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var v)) return "";
+        return (v & 0x00FFFFFF).ToString("X8");
     }
 
     private static string BuildSubText(ConflictEntry entry)
@@ -380,6 +527,7 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
 {
     public string DisplayName           { get; set; } = "";
     public string SubText               { get; set; } = "";
+    public string FormId                { get; set; } = "";
     public string NormalizedKey         { get; set; } = "";
     public string OverallWinnerFileName { get; set; } = "";
     public ObservableCollection<NpcConflictGroup> Groups { get; } = new();
@@ -427,6 +575,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
 {
     public string  FileName            { get; init; } = "";
     public string  FilePath            { get; init; } = "";
+    public string  DisplayPath         => ConflictViewBase.ToSkyrimRelativePath(FilePath);
     public string  RuleValueLabel      { get; init; } = "";
     public int     LineNumber          { get; init; }
     public string  ConflictLineText    { get; init; } = "";
@@ -436,6 +585,10 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public int     TotalSources        { get; init; }
     public string  RuleValue           { get; init; } = "";
     public string  ResolvedRuleDisplay { get; init; } = "";
+    public string  RulePlugin          { get; init; } = "";
+    public bool    ShowPortrait        { get; init; }          // reserve the portrait column (Appearance sources)
+    public string? PortraitPath        { get; init; }          // set in future to render this source's portrait
+    public bool    HasPortrait         => !string.IsNullOrEmpty(PortraitPath);
     public bool    IsAdditive          { get; init; }
     public bool    IsProbabilistic     { get; init; }
     public string  SourceTool          { get; init; } = "SkyPatcher";

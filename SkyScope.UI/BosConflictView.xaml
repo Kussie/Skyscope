@@ -243,8 +243,8 @@
                                                         FollowingLine="{Binding FollowingLine}"
                                                         Margin="0,6,0,0"/>
 
-                                                    <!-- Row 5: file path -->
-                                                    <TextBlock Text="{Binding FilePath}"
+                                                    <!-- Row 5: file path (relative to Skyrim root) -->
+                                                    <TextBlock Text="{Binding DisplayPath}"
                                                                FontSize="9" Foreground="#8C99A8"
                                                                Margin="0,4,0,0"
                                                                TextTrimming="CharacterEllipsis"/>

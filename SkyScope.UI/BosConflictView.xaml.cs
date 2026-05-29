@@ -172,6 +172,7 @@ public class BosSourceViewModel : IConflictSourceVm
 {
     public string  FileName           { get; init; } = "";
     public string  FilePath           { get; init; } = "";
+    public string  DisplayPath        => ConflictViewBase.ToSkyrimRelativePath(FilePath);
     public int     LineNumber         { get; init; }
     public string  LineText           { get; init; } = "";
     public string? PrecedingLine      { get; init; }

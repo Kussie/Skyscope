@@ -318,6 +318,16 @@ public class ModReferenceLibrary
     public string? ResolveNameByEditorId(string editorId) =>
         _byEditorId.TryGetValue(editorId, out var ri) ? ri.ResolvedName : null;
 
+    // Resolves the owning plugin of a record from its EditorId — for rule references that name
+    // a record by EditorId only (no inline Plugin|FormId). Returns the origin of whichever record
+    // won the EditorId slot; null when the EditorId wasn't enriched (e.g. plugin not loaded).
+    public string? ResolvePluginByEditorId(string editorId) =>
+        _byEditorId.TryGetValue(editorId, out var ri) ? ri.Plugin : null;
+
+    // Resolves the local FormId (hex) of a record from its EditorId; null when not enriched.
+    public string? ResolveFormIdByEditorId(string editorId) =>
+        _byEditorId.TryGetValue(editorId, out var ri) ? ri.FormId : null;
+
     public bool IsNpcEditorId(string editorId) => _npcEditorIds.Contains(editorId);
 
     // ── Display name for BOS conflict entries ─────────────────────────────────
