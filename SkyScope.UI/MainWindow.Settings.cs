@@ -167,24 +167,6 @@ public partial class MainWindow
         catch { /* best-effort */ }
     }
 
-    private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
-            File.WriteAllLines(settingsPath, new[]
-            {
-                $"SkyrimPath:{NormaliseSkyrimPath(SkyrimPathTextBox.Text ?? "")}",
-                $"HistoryDiffMode:{HistoryViewControl.DiffMode}"
-            });
-            StatusTextBlock.Text = "Settings saved.";
-        }
-        catch (Exception ex)
-        {
-            StatusTextBlock.Text = $"Failed to save settings: {ex.Message}";
-        }
-    }
-
     private void LoadSettings()
     {
         // Auto-detect from registry first, then let saved settings override
