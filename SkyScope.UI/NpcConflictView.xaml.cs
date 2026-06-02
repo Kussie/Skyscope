@@ -292,7 +292,9 @@ public partial class NpcConflictView : ConflictViewBase
     }
 
     // Resolves the NPC's local FormId for display: the enriched record's id (looked up by EditorId),
-    // falling back to a direct RecordId reference. Returns "" when unknown.
+    // falling back to a direct RecordId reference, then to the rule's raw identifier when it
+    // happens to match a known NPC EditorId (vanilla NPCs like Delphine/Lydia have EditorId ==
+    // display name, so a Name-typed filter still resolves). Returns "" when unknown.
     private static string BuildFormId(ConflictEntry entry, ModReferenceLibrary? library)
     {
         if (!string.IsNullOrEmpty(entry.ResolvedEditorId) && library != null)
@@ -303,6 +305,14 @@ public partial class NpcConflictView : ConflictViewBase
 
         if (entry.NpcRef.RefType == NpcRefType.RecordId)
             return FormatFormId(entry.NpcRef.FormId);
+
+        if (library != null
+            && entry.NpcRef.RefType is NpcRefType.EditorId or NpcRefType.Name
+            && !string.IsNullOrEmpty(entry.NpcRef.Identifier))
+        {
+            var fid = library.ResolveFormIdByEditorId(entry.NpcRef.Identifier);
+            if (!string.IsNullOrEmpty(fid)) return FormatFormId(fid);
+        }
 
         return "";
     }

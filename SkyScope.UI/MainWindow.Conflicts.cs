@@ -183,6 +183,13 @@ public partial class MainWindow
                 eid = entry.NpcRef.Identifier;
             if (string.IsNullOrEmpty(eid)) continue;
 
+            // Lock in the EditorId reference whenever the identifier is a known NPC EditorId —
+            // even if the display name can't be resolved (e.g. localized FULL not extracted from
+            // the BSA strings table). This lets downstream FormId lookups succeed for NPCs like
+            // Delphine/Lydia whose rule identifier equals their EditorId.
+            if (string.IsNullOrEmpty(entry.ResolvedEditorId) && library.IsNpcEditorId(eid))
+                entry.ResolvedEditorId = eid;
+
             // Only fill an empty name or upgrade one that just echoes the EditorId.
             bool weak = string.IsNullOrEmpty(entry.ResolvedName)
                         || string.Equals(entry.ResolvedName, eid, StringComparison.OrdinalIgnoreCase);
