@@ -67,8 +67,15 @@ public class ConflictDetector
         return summary;
     }
 
-    private static string ResolveKey(NpcReference npcRef, ModReferenceLibrary? library) =>
-        library != null ? library.GetCanonicalKey(npcRef) : npcRef.NormalizedKey;
+    // Falls back to the raw NormalizedKey when the library can't canonicalise the reference —
+    // otherwise SkyPatcher rules targeting custom-mod NPCs (whose EditorIds the library doesn't
+    // know) are silently dropped and their conflicts never surface.
+    private static string ResolveKey(NpcReference npcRef, ModReferenceLibrary? library)
+    {
+        if (library == null) return npcRef.NormalizedKey;
+        var key = library.GetCanonicalKey(npcRef);
+        return !string.IsNullOrEmpty(key) ? key : npcRef.NormalizedKey;
+    }
 
     // When additive=true (Spell/Perk), same-value entries from different files are still duplicates.
     private static void BuildConflicts(
