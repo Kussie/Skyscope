@@ -35,6 +35,16 @@ public class BosSwapRule
     public string? FollowingLine               { get; set; }
     public string? ConditionalSection          { get; set; }   // null = global
     public string  SectionType                 { get; set; } = "Forms";
+
+    // BOS reference filter — the "properties" field of a swap rule (e.g. posA(x,y,z), flags(0x..),
+    // bnds(...)). Constrains the swap to specific world references rather than the base form. Two
+    // rules with different PropertiesFilter values target disjoint sets of references and don't
+    // truly conflict. Empty string = unfiltered (applies to every reference of the base form).
+    public string  PropertiesFilter            { get; set; } = "";
+
+    // Optional swap chance. Recognised forms: bare number (e.g. "50" / "7.6"), chanceA(N), or
+    // chanceR(N), where N may be fractional. Null when the rule has no chance field.
+    public double? Chance                      { get; set; }
 }
 
 public class BosConflictSource
@@ -47,6 +57,7 @@ public class BosConflictSource
     public string  SwapTarget         { get; set; } = "";
     public string? ConditionalSection { get; set; }
     public string  SectionType        { get; set; } = "Forms";
+    public double? Chance             { get; set; }
 }
 
 public class BosConflictEntry

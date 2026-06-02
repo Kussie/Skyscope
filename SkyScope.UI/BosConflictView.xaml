@@ -189,6 +189,24 @@
                                                                     <Run Text="{Binding TotalSources, Mode=OneTime}"/>
                                                                 </TextBlock>
                                                             </Border>
+                                                            <!-- Chance badge -->
+                                                            <Border Background="#81A1C1" CornerRadius="3"
+                                                                    Padding="6,2" Margin="4,0,0,0"
+                                                                    VerticalAlignment="Center">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding HasChance}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock Text="{Binding ChanceBadgeText}"
+                                                                           FontSize="9" FontWeight="Bold"
+                                                                           Foreground="#ECEFF4"/>
+                                                            </Border>
                                                             <!-- WINS badge -->
                                                             <Border Background="#A3BE8C" CornerRadius="3"
                                                                     Padding="6,2" Margin="4,0,0,0"

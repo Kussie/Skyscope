@@ -23,7 +23,13 @@ public class BosConflictDetector
                 // conditions (e.g. Fencewoven01 under WhiterunLocation vs FalkreathLocation) aren't
                 // treated as competing — only rules under the same condition can actually clash.
                 var conditionKey = rule.ConditionalSection?.ToLowerInvariant() ?? "";
-                var key          = $"{baseKey}##{conditionKey}";
+
+                // Also factor in BOS's reference-filter properties (posA/posB/bnds/flags). A rule
+                // scoped to a specific world reference targets a different set of objects than an
+                // unfiltered base-form swap, so the two don't actually compete. Whitespace is
+                // stripped so trivial formatting differences don't accidentally split a real group.
+                var filterKey = StripWhitespace(rule.PropertiesFilter).ToLowerInvariant();
+                var key       = $"{baseKey}##{conditionKey}##{filterKey}";
 
                 if (!map.TryGetValue(key, out var entry))
                 {
@@ -40,7 +46,8 @@ public class BosConflictDetector
                     FollowingLine      = rule.FollowingLine,
                     SwapTarget         = rule.SwapTarget,
                     ConditionalSection = rule.ConditionalSection,
-                    SectionType        = rule.SectionType
+                    SectionType        = rule.SectionType,
+                    Chance             = rule.Chance
                 });
             }
         }
@@ -72,5 +79,14 @@ public class BosConflictDetector
             string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
 
         return new BosConflictSummary { SwapConflicts = conflicts };
+    }
+
+    private static string StripWhitespace(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        var buf = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s)
+            if (!char.IsWhiteSpace(c)) buf.Append(c);
+        return buf.ToString();
     }
 }

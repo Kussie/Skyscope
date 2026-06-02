@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using SkyScope.Models;
@@ -68,6 +69,8 @@ public class BosConfigParser
             }
 
             // Swap rule line: origBaseID[,orig2]|swapBaseID[,swap2]|properties|chance
+            // Properties (posA/posB/bnds/flags…) contain parentheses; chance is a bare integer —
+            // either can be omitted, so a single trailing field is disambiguated by content.
             var fields = trimmed.Split('|');
             if (fields.Length < 2) continue;
 
@@ -87,6 +90,40 @@ public class BosConfigParser
 
             if (origObjects.Count == 0) continue;
 
+            // Trailing fields may carry properties (reference filters) and/or a chance value,
+            // in any order. Bare numbers and chanceA(N)/chanceR(N) are chance; everything else
+            // (posA/posB/bnds/flags/"NONE"/etc.) is the properties filter. Chance values can be
+            // fractional (e.g. chanceR(7.6) is a relative weight), so parse as double using the
+            // invariant culture so a comma-decimal locale still reads "7.6" correctly.
+            const NumberStyles numStyle = NumberStyles.Float;
+            var ci = CultureInfo.InvariantCulture;
+            var propertiesFilter = "";
+            double? chance       = null;
+            for (int f = 2; f < fields.Length; f++)
+            {
+                var v = fields[f].Trim();
+                if (v.Length == 0) continue;
+
+                if (double.TryParse(v, numStyle, ci, out var n))
+                {
+                    chance = n;
+                    continue;
+                }
+
+                if (v.StartsWith("chance", StringComparison.OrdinalIgnoreCase))
+                {
+                    var open = v.IndexOf('(');
+                    if (open > 0)
+                    {
+                        var inner = v[(open + 1)..].TrimEnd(')').Trim();
+                        if (double.TryParse(inner, numStyle, ci, out var cn)) chance = cn;
+                    }
+                    continue;
+                }
+
+                if (propertiesFilter.Length == 0) propertiesFilter = v;
+            }
+
             string? preceding = i > 0               ? lines[i - 1] : null;
             string? following = i < lines.Length - 1 ? lines[i + 1] : null;
 
@@ -100,7 +137,9 @@ public class BosConfigParser
                 PrecedingLine     = preceding,
                 FollowingLine     = following,
                 ConditionalSection = currentCondition,
-                SectionType       = currentSection
+                SectionType       = currentSection,
+                PropertiesFilter  = propertiesFilter,
+                Chance            = chance
             };
         }
     }

@@ -33,6 +33,12 @@ public partial class BosConflictView : ConflictViewBase
         _allConflicts = summary.SwapConflicts
             .Select(entry =>
             {
+                // When every source is a sub-100% chance rule, the outcome is non-deterministic —
+                // BOS picks at runtime — so no source is the true "winner". Match the SPID outfit
+                // handling in the NPC view and suppress the winner badge for those groups.
+                var allProbabilistic = entry.Sources.Count > 0
+                    && entry.Sources.All(s => s.Chance.HasValue && s.Chance.Value < 100);
+
                 var sources = entry.Sources
                     .Select((src, idx) => new BosSourceViewModel
                     {
@@ -44,9 +50,10 @@ public partial class BosConflictView : ConflictViewBase
                         FollowingLine      = src.FollowingLine,
                         SwapTarget         = src.SwapTarget,
                         ConditionalSection = src.ConditionalSection,
+                        Chance             = src.Chance,
                         LoadPosition       = idx + 1,
                         TotalSources       = entry.Sources.Count,
-                        IsWinner           = idx == entry.Sources.Count - 1
+                        IsWinner           = !allProbabilistic && idx == entry.Sources.Count - 1
                     })
                     .ToList();
 
@@ -179,12 +186,17 @@ public class BosSourceViewModel : IConflictSourceVm
     public string? FollowingLine      { get; init; }
     public string  SwapTarget         { get; init; } = "";
     public string? ConditionalSection { get; init; }
+    public double? Chance             { get; init; }
     public int     LoadPosition       { get; init; }
     public int     TotalSources       { get; init; }
     public bool    IsWinner           { get; init; }
     public BosConflictViewModel? Parent { get; set; }
 
     public bool HasConditionalSection => !string.IsNullOrEmpty(ConditionalSection);
+    public bool HasChance             => Chance.HasValue;
+    public string ChanceBadgeText     => Chance.HasValue
+        ? $"Chance {Chance.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}%"
+        : "";
     public int  PrecedingLineNumber   => LineNumber - 1;
     public int  FollowingLineNumber   => LineNumber + 1;
     public bool HasPrecedingLine      => !string.IsNullOrEmpty(PrecedingLine);
