@@ -20,6 +20,9 @@ public partial class NpcConflictView : ConflictViewBase
     private const string ColorOutfit      = "#B48EAD";
     private const string ColorSpell       = "#A3BE8C";
     private const string ColorPerk        = "#BF616A";
+    private const string ColorBase        = "#88C0D0";
+    private const string ColorMods        = "#5E81AC";
+    private const string ColorModsFg      = "#ECEFF4";
     private const string ColorBtnInactive = "#4C566A";
     private const string ColorBtnActiveFg = "#2E3440";
     private const string ColorBtnInactFg  = "#88C0D0";
@@ -45,6 +48,15 @@ public partial class NpcConflictView : ConflictViewBase
     private bool _filterO  = true;
     private bool _filterSp = false;
     private bool _filterP  = false;
+    private bool _filterVanilla = true;
+    private bool _filterModded  = true;
+
+    // Skyrim + official DLCs. Creation Club / Anniversary Edition content uses a "cc" prefix
+    // and is handled separately in IsVanillaPlugin.
+    private static readonly HashSet<string> BaseGamePlugins = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm",
+    };
 
     private readonly ObservableCollection<NpcConflictViewModel> _npcListSource = new();
 
@@ -121,7 +133,8 @@ public partial class NpcConflictView : ConflictViewBase
                     DisplayName   = entry.DisplayName,
                     SubText       = BuildSubText(entry),
                     FormId        = BuildFormId(entry, library),
-                    NormalizedKey = key
+                    NormalizedKey = key,
+                    IsVanilla     = ResolveIsVanilla(entry, library)
                 };
                 dict[key] = vm;
             }
@@ -317,6 +330,36 @@ public partial class NpcConflictView : ConflictViewBase
         return "";
     }
 
+    // True for plugins that ship with Skyrim — base game, official DLCs, and Creation Club /
+    // Anniversary Edition content (which uses a "cc" prefix). Everything else counts as a mod.
+    private static bool IsVanillaPlugin(string? plugin)
+    {
+        if (string.IsNullOrEmpty(plugin)) return false;
+        return BaseGamePlugins.Contains(plugin)
+            || plugin.StartsWith("cc", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Determines whether a conflict's target NPC originates from a vanilla plugin. Records keyed
+    // by Plugin|FormId answer directly; EditorId/Name refs resolve through the library's
+    // EditorId→Plugin index. Unknown origin (e.g. plugin not loaded) is treated as modded so
+    // custom NPCs aren't accidentally hidden when the user is filtering to "Modded".
+    private static bool ResolveIsVanilla(ConflictEntry entry, ModReferenceLibrary? library)
+    {
+        if (entry.NpcRef.RefType == NpcRefType.RecordId)
+            return IsVanillaPlugin(entry.NpcRef.Plugin);
+
+        if (library == null) return false;
+
+        var eid = !string.IsNullOrEmpty(entry.ResolvedEditorId)
+            ? entry.ResolvedEditorId
+            : entry.NpcRef.RefType is NpcRefType.EditorId or NpcRefType.Name
+                ? entry.NpcRef.Identifier
+                : null;
+
+        if (string.IsNullOrEmpty(eid)) return false;
+        return IsVanillaPlugin(library.ResolvePluginByEditorId(eid));
+    }
+
     // Normalises a hex FormId to an 8-digit uppercase id, master byte 00 (e.g. "135E6" → "000135E6").
     private static string FormatFormId(string? rawHex)
     {
@@ -358,6 +401,8 @@ public partial class NpcConflictView : ConflictViewBase
         var visible = _allNpcs.Where(vm =>
         {
             if (vm.FilteredGroups.Count == 0) return false;
+            if (vm.IsVanilla  && !_filterVanilla) return false;
+            if (!vm.IsVanilla && !_filterModded)  return false;
             if (string.IsNullOrEmpty(search)) return true;
             return vm.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || vm.SubText.Contains(search, StringComparison.OrdinalIgnoreCase);
@@ -394,10 +439,24 @@ public partial class NpcConflictView : ConflictViewBase
         Populate(_lastSummary);
     }
 
-    private static void UpdateFilterBtn(Button btn, bool active, string activeHex)
+    private void FilterBase_Click(object sender, RoutedEventArgs e)
     {
-        btn.Background = active ? HexBrush(activeHex)      : HexBrush(ColorBtnInactive);
-        btn.Foreground = active ? HexBrush(ColorBtnActiveFg) : HexBrush(ColorBtnInactFg);
+        _filterVanilla = !_filterVanilla;
+        UpdateFilterBtn(FilterBaseButton, _filterVanilla, ColorBase);
+        ApplyFilter();
+    }
+
+    private void FilterMods_Click(object sender, RoutedEventArgs e)
+    {
+        _filterModded = !_filterModded;
+        UpdateFilterBtn(FilterModsButton, _filterModded, ColorMods, ColorModsFg);
+        ApplyFilter();
+    }
+
+    private static void UpdateFilterBtn(Button btn, bool active, string activeHex, string? activeFgHex = null)
+    {
+        btn.Background = active ? HexBrush(activeHex)                          : HexBrush(ColorBtnInactive);
+        btn.Foreground = active ? HexBrush(activeFgHex ?? ColorBtnActiveFg)    : HexBrush(ColorBtnInactFg);
     }
 
     private void MakeWinner_Click(object sender, RoutedEventArgs e)
@@ -527,6 +586,7 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
     public string SubText               { get; set; } = "";
     public string FormId                { get; set; } = "";
     public string NormalizedKey         { get; set; } = "";
+    public bool   IsVanilla             { get; set; }
     public ObservableCollection<NpcConflictGroup> Groups { get; } = new();
 
     private bool _hasAppearance;

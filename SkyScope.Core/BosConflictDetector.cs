@@ -16,8 +16,14 @@ public class BosConflictDetector
         {
             foreach (var orig in rule.OriginalObjects)
             {
-                var key = orig.NormalizedKey;
-                if (string.IsNullOrEmpty(key)) continue;
+                var baseKey = orig.NormalizedKey;
+                if (string.IsNullOrEmpty(baseKey)) continue;
+
+                // Include the conditional section in the grouping key so swaps gated on different
+                // conditions (e.g. Fencewoven01 under WhiterunLocation vs FalkreathLocation) aren't
+                // treated as competing — only rules under the same condition can actually clash.
+                var conditionKey = rule.ConditionalSection?.ToLowerInvariant() ?? "";
+                var key          = $"{baseKey}##{conditionKey}";
 
                 if (!map.TryGetValue(key, out var entry))
                 {
