@@ -40,6 +40,37 @@ public static class ConflictResolutionHelper
         return result;
     }
 
+    // Returns a filtered copy of entries with plugin (ESP/ESL overhaul) sources removed when
+    // hidePlugins is true. Entries that no longer have 2+ distinct-value sources are dropped — so a
+    // plugin-vs-plugin conflict disappears entirely and a SPID/SkyPatcher conflict that was only a
+    // conflict because of a plugin also drops, while genuine config conflicts remain.
+    public static List<ConflictEntry> FilterPluginSources(List<ConflictEntry> entries, bool hidePlugins)
+    {
+        if (!hidePlugins) return entries;
+
+        var result = new List<ConflictEntry>(entries.Count);
+        foreach (var entry in entries)
+        {
+            var filtered = entry.Sources.Where(s => s.SourceTool != "Plugin").ToList();
+
+            if (filtered.Count < 2) continue;
+
+            var first = filtered[0].RuleValue;
+            if (filtered.All(s => string.Equals(s.RuleValue, first, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            var copy = new ConflictEntry
+            {
+                NpcRef           = entry.NpcRef,
+                ResolvedName     = entry.ResolvedName,
+                ResolvedEditorId = entry.ResolvedEditorId
+            };
+            copy.Sources.AddRange(filtered);
+            result.Add(copy);
+        }
+        return result;
+    }
+
     public static void CommentOutLine(
         string filePath, int lineNumber, string capturedText,
         string conflictDescription = "", string sourceTool = "",

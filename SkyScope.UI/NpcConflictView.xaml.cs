@@ -78,11 +78,14 @@ public partial class NpcConflictView : ConflictViewBase
             vm.IsExpanded = false;
 
         var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
+        var hidePlugins   = HidePluginConflictsCheckBox.IsChecked == true;
         var dict = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
 
         _portraitIndex = BuildPortraitIndex();
 
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts,    showLowChance), RuleType.Appearance,    "Appearance",     HexBrush(ColorAppearance), _library, _portraitIndex);
+        var appearance = ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts, showLowChance);
+        appearance = ConflictResolutionHelper.FilterPluginSources(appearance, hidePlugins);
+        AddGroups(dict, appearance, RuleType.Appearance, "Appearance", HexBrush(ColorAppearance), _library, _portraitIndex);
         AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush(ColorSkin),       _library, _portraitIndex);
         AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush(ColorOutfit),     _library, _portraitIndex);
         AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush(ColorSpell), _library, _portraitIndex);
@@ -442,6 +445,12 @@ public partial class NpcConflictView : ConflictViewBase
     }
 
     private void SpidFilter_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_lastSummary is null) return;
+        Populate(_lastSummary);
+    }
+
+    private void PluginFilter_Changed(object sender, RoutedEventArgs e)
     {
         if (_lastSummary is null) return;
         Populate(_lastSummary);

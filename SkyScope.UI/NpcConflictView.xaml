@@ -110,6 +110,12 @@
                               Margin="8,0,0,0" VerticalAlignment="Center"
                               Checked="SpidFilter_Changed" Unchecked="SpidFilter_Changed"
                               ToolTip="When checked, also shows SPID conflicts where the rule has less than 100% chance"/>
+                    <CheckBox x:Name="HidePluginConflictsCheckBox"
+                              Content="Hide Plugin Conflicts"
+                              Style="{StaticResource FilterToggleStyle}"
+                              Margin="8,0,0,0" VerticalAlignment="Center"
+                              Checked="PluginFilter_Changed" Unchecked="PluginFilter_Changed"
+                              ToolTip="When checked, hides ESP/ESL plugin appearance overhauls and any conflict that exists only because of them"/>
                 </StackPanel>
 
                 <!-- NPC count -->
