@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         EnsureAppFilesExist();
         _historyStore.Load();
         NpcConflictViewControl.HistoryStore = _historyStore;
+        NpcConflictViewControl.ClipboardCopyRequested += (_, message) => ShowToast(message);
         BosConflictViewControl.HistoryStore = _historyStore;
         HistoryViewControl.Refresh(_historyStore);
         LoadSettings();
@@ -145,7 +146,8 @@ public partial class MainWindow : Window
             // ── Step 3: Enrich library from plugin files ────────────────────
 
             var progress = new Progress<string>(msg => StatusTextBlock.Text = msg);
-            await Task.Run(() => new PluginEnricher().Enrich(library, skyrimPath, progress));
+            var ignoredPlugins = _appSettings.IgnoredAppearancePlugins;
+            await Task.Run(() => new PluginEnricher().Enrich(library, skyrimPath, progress, ignoredPlugins));
             _stats.DbRecordCount = library.NpcRecordCount;
 
             // ── Step 4: Bundle SPID rules + filter inactive spell/perk ──────
@@ -238,6 +240,8 @@ public partial class MainWindow : Window
             StatusTextBlock.Text = totalConflicts == 0
                 ? $"Analysis complete — no conflicts.  {skyPatcherPart}.  NPC database: {library.NpcRecordCount:N0} record(s).{spidSuffix}{bosSuffix}"
                 : $"Analysis complete — {totalConflicts} conflict(s) in {configs.Count} SkyPatcher file(s).  NPC database: {library.NpcRecordCount:N0} record(s).{spidSuffix}{bosSuffix}";
+
+            ShowToast("Analysis Complete");
         }
         catch (Exception ex)
         {

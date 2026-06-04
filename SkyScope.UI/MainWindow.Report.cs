@@ -229,10 +229,22 @@ public partial class MainWindow
             foreach (var entry in entries)
             {
                 var npc     = entry.NpcRef;
-                var sorted  = entry.Sources
+
+                // Config sources (SPID/SkyPatcher) rank above plugin overhaul sources, which sort
+                // by load order — matching the conflict panel. A plugin can only win when there is
+                // no config source (plugin-vs-plugin).
+                var configSorted = entry.Sources
+                    .Where(s => s.SourceTool != "Plugin")
                     .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
                     .ToList();
-                var winner  = sorted.Count > 0 ? Path.GetFileName(sorted[^1].FilePath) : "?";
+                var pluginSorted = entry.Sources
+                    .Where(s => s.SourceTool == "Plugin")
+                    .OrderBy(s => s.LoadOrderIndex ?? int.MaxValue)
+                    .ToList();
+                var sorted    = configSorted.Concat(pluginSorted).ToList();
+                var winnerSrc = configSorted.Count > 0 ? configSorted[^1]
+                              : pluginSorted.Count > 0 ? pluginSorted[^1] : null;
+                var winner    = winnerSrc != null ? Path.GetFileName(winnerSrc.FilePath) : "?";
 
                 if (!string.IsNullOrEmpty(entry.ResolvedName))
                     sb.AppendLine($"  {entry.ResolvedName}  [{npc.DisplayText}]");
@@ -244,7 +256,7 @@ public partial class MainWindow
 
                 sb.AppendLine($"    Winner (load order): {winner}");
                 foreach (var src in sorted)
-                    sb.AppendLine($"    - {src.FilePath}");
+                    sb.AppendLine($"    - {src.FilePath}{(src.SourceTool == "Plugin" ? "  [Plugin]" : "")}");
             }
         }
         sb.AppendLine();

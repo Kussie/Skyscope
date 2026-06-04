@@ -51,19 +51,22 @@ public partial class NpcConflictView : ConflictViewBase
     private bool _filterVanilla = true;
     private bool _filterModded  = true;
 
-    // Skyrim + official DLCs. Creation Club / Anniversary Edition content uses a "cc" prefix
-    // and is handled separately in IsVanillaPlugin.
-    private static readonly HashSet<string> BaseGamePlugins = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm",
-    };
-
     private readonly ObservableCollection<NpcConflictViewModel> _npcListSource = new();
 
     public NpcConflictView()
     {
         InitializeComponent();
         NpcList.ItemsSource = _npcListSource;
+    }
+
+    // Raised after a plugin name is copied to the clipboard so the host window can show a toast.
+    public event EventHandler<string>? ClipboardCopyRequested;
+
+    // Copies a clicked plugin-name TextBlock's text to the clipboard and signals the host window.
+    private void PluginName_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is TextBlock { Text: { Length: > 0 } text })
+            ClipboardHelper.SetTextAsync(text, () => ClipboardCopyRequested?.Invoke(this, "Copied to clipboard"));
     }
 
     public void Populate(ConflictSummary summary, ModReferenceLibrary? library = null)
@@ -139,11 +142,25 @@ public partial class NpcConflictView : ConflictViewBase
                 dict[key] = vm;
             }
 
-            var sorted = entry.Sources
+            // Config sources (SPID/SkyPatcher) sort by file then line as before; plugin overhaul
+            // sources sort by load order. Config sources always rank above plugin sources: SPID and
+            // SkyPatcher apply at runtime on top of whatever plugin record wins, so a plugin can be
+            // the winner only when there is no config source (a plugin-vs-plugin set), where the
+            // highest-load-order plugin wins.
+            var configSources = entry.Sources
+                .Where(s => s.SourceTool != "Plugin")
                 .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(s => s.LineNumber)
                 .ToList();
-            var winner = sorted.Count > 0 ? sorted[^1] : null;
+            var pluginSources = entry.Sources
+                .Where(s => s.SourceTool == "Plugin")
+                .OrderBy(s => s.LoadOrderIndex ?? int.MaxValue)
+                .ToList();
+            var sorted = configSources.Concat(pluginSources).ToList();
+
+            var winner = configSources.Count > 0 ? configSources[^1]
+                       : pluginSources.Count > 0 ? pluginSources[^1]
+                       : null;
 
             // Outfit conflicts where every source is a probabilistic SPID rule (chance < 100%)
             // have no clear winner — treat like additive rules: show Remove, hide Make Winner.
@@ -330,15 +347,6 @@ public partial class NpcConflictView : ConflictViewBase
         return "";
     }
 
-    // True for plugins that ship with Skyrim — base game, official DLCs, and Creation Club /
-    // Anniversary Edition content (which uses a "cc" prefix). Everything else counts as a mod.
-    private static bool IsVanillaPlugin(string? plugin)
-    {
-        if (string.IsNullOrEmpty(plugin)) return false;
-        return BaseGamePlugins.Contains(plugin)
-            || plugin.StartsWith("cc", StringComparison.OrdinalIgnoreCase);
-    }
-
     // Determines whether a conflict's target NPC originates from a vanilla plugin. Records keyed
     // by Plugin|FormId answer directly; EditorId/Name refs resolve through the library's
     // EditorId→Plugin index. Unknown origin (e.g. plugin not loaded) is treated as modded so
@@ -346,7 +354,7 @@ public partial class NpcConflictView : ConflictViewBase
     private static bool ResolveIsVanilla(ConflictEntry entry, ModReferenceLibrary? library)
     {
         if (entry.NpcRef.RefType == NpcRefType.RecordId)
-            return IsVanillaPlugin(entry.NpcRef.Plugin);
+            return VanillaPlugins.IsVanilla(entry.NpcRef.Plugin);
 
         if (library == null) return false;
 
@@ -357,7 +365,7 @@ public partial class NpcConflictView : ConflictViewBase
                 : null;
 
         if (string.IsNullOrEmpty(eid)) return false;
-        return IsVanillaPlugin(library.ResolvePluginByEditorId(eid));
+        return VanillaPlugins.IsVanilla(library.ResolvePluginByEditorId(eid));
     }
 
     // Normalises a hex FormId to an 8-digit uppercase id, master byte 00 (e.g. "135E6" → "000135E6").
@@ -466,7 +474,11 @@ public partial class NpcConflictView : ConflictViewBase
         var group = winner.Group;
         if (group == null) return;
 
+        // Plugin overhaul sources are never edited: they have no config line to comment, and
+        // SkyPatcher/SPID override the plugin record at runtime anyway. Skip them here so making a
+        // config source the winner only touches the other SPID/SkyPatcher sources.
         var toComment = group.Sources
+            .Where(s => s.SourceTool != "Plugin")
             .Where(s => !(string.Equals(s.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase)
                           && s.LineNumber == winner.LineNumber))
             .ToList();
@@ -532,6 +544,7 @@ public partial class NpcConflictView : ConflictViewBase
     {
         if (sender is not Button btn) return;
         if (btn.Tag is not NpcTabSourceViewModel src) return;
+        if (src.IsPlugin) return;  // plugin overhaul sources are read-only (no editable file)
         var group = src.Group;
         if (group == null) return;
 
@@ -655,6 +668,15 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
 
     public bool   IsSpid              => SourceTool == "SPID";
     public string SpidBadgeText       => SpidChance.HasValue ? $"SPID  {SpidChance.Value}%" : "SPID";
+
+    // Plugin appearance-overhaul source: read-only (no editable file). SkyPatcher/SPID override
+    // it at runtime, so it never carries action buttons and its rule-value/code-context rows
+    // (which describe config-file edits) are hidden.
+    public bool   IsPlugin            => SourceTool == "Plugin";
+    public bool   ShowActions         => !IsPlugin;
+    public bool   ShowRuleValue       => !IsPlugin;
+    public bool   ShowCodeContext     => !IsPlugin;
+
     public int    PrecedingLineNumber  => LineNumber - 1;
     public int    FollowingLineNumber  => LineNumber + 1;
     public bool   HasPrecedingLine     => !string.IsNullOrEmpty(PrecedingLine);

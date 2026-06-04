@@ -22,6 +22,7 @@ public partial class MainWindow
 
     private AppSettings _appSettings = new();
     private readonly ObservableCollection<PluginThumbnailRow> _pluginThumbnailRows = new();
+    private readonly ObservableCollection<string> _ignoredPluginRows = new();
 
     // Reads settings.json and builds the plugin-thumbnail rows. Called on startup, after
     // EnsureAppFilesExist has guaranteed the file exists.
@@ -49,7 +50,66 @@ public partial class MainWindow
             });
 
         PluginThumbnailList.ItemsSource = _pluginThumbnailRows;
+
+        _ignoredPluginRows.Clear();
+        foreach (var plugin in _appSettings.IgnoredAppearancePlugins
+                     .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+            _ignoredPluginRows.Add(plugin);
+        IgnoredPluginList.ItemsSource = _ignoredPluginRows;
+
         UpdateSettingsEmptyState();
+    }
+
+    // Adds the plugin typed into the Ignored Plugins box. Persists immediately; the change takes
+    // effect on the next analysis (the ignore list is applied while scanning plugins).
+    private void AddIgnoredPlugin_Click(object sender, RoutedEventArgs e)
+    {
+        var name = IgnoredPluginInput.Text.Trim();
+        if (string.IsNullOrEmpty(name)) return;
+
+        if (_ignoredPluginRows.Any(p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            SettingsStatusText.Text = $"{name} is already in the ignored list.";
+            IgnoredPluginInput.Clear();
+            return;
+        }
+
+        _ignoredPluginRows.Add(name);
+        ResortIgnoredPlugins();
+        IgnoredPluginInput.Clear();
+        PersistIgnoredPlugins($"Added {name} to ignored plugins. Re-run analysis to apply.");
+    }
+
+    private void RemoveIgnoredPlugin_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: string name }) return;
+
+        var match = _ignoredPluginRows.FirstOrDefault(p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase));
+        if (match == null) return;
+
+        _ignoredPluginRows.Remove(match);
+        PersistIgnoredPlugins($"Removed {name} from ignored plugins. Re-run analysis to apply.");
+    }
+
+    private void ResortIgnoredPlugins()
+    {
+        var sorted = _ignoredPluginRows.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        _ignoredPluginRows.Clear();
+        foreach (var p in sorted) _ignoredPluginRows.Add(p);
+    }
+
+    private void PersistIgnoredPlugins(string statusMessage)
+    {
+        _appSettings.IgnoredAppearancePlugins = _ignoredPluginRows.ToList();
+        try
+        {
+            File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson));
+            SettingsStatusText.Text = statusMessage;
+        }
+        catch (Exception ex)
+        {
+            SettingsStatusText.Text = $"Failed to update settings: {ex.Message}";
+        }
     }
 
     // Adds any newly-discovered appearance plugins as rows (with an empty folder), keeping the
@@ -141,6 +201,8 @@ public partial class MainWindow
             // Re-resolve portraits in the NPC view so newly-pointed folders take effect immediately.
             NpcConflictViewControl.ThumbnailDirectories = _appSettings.PluginThumbnailDirectories;
             NpcConflictViewControl.RefreshPortraits();
+
+            ShowToast("Settings Saved");
         }
         catch (Exception ex)
         {

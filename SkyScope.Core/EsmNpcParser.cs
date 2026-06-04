@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -11,12 +12,29 @@ internal class EsmNpcParser
 {
     private static readonly HashSet<string> NpcGroup = new() { "NPC_" };
 
+    // NPC_ subrecords that only appear when the record carries its own face/appearance data
+    // (i.e. it isn't inheriting traits from a template). Their mere presence marks the record
+    // as an appearance edit — head parts, hair colour, skin tone, face morph/parts, head
+    // texture set, and tint layers. Used to tell an appearance overhaul override apart from an
+    // override that only touches factions / AI / stats.
+    private static readonly HashSet<string> AppearanceTags =
+        new() { "PNAM", "HCLF", "QNAM", "NAM9", "NAMA", "FTST", "TINI" };
+
     internal class NpcEntry
     {
-        public string  OriginalPlugin { get; set; } = string.Empty;
+        public string  OriginalPlugin { get; set; } = string.Empty;  // origin master of the form
+        public string  ScanningPlugin { get; set; } = string.Empty;  // file this record was read from
         public uint    LocalFormId    { get; set; }
         public string? EditorId       { get; set; }
         public string? FullName       { get; set; }
+
+        // True when this record was read from a plugin other than the form's origin master —
+        // i.e. it is an override of an existing NPC rather than a newly-defined one.
+        public bool IsOverride =>
+            !string.Equals(ScanningPlugin, OriginalPlugin, StringComparison.OrdinalIgnoreCase);
+
+        // True when the record carries appearance subrecords (see AppearanceTags).
+        public bool HasAppearanceData { get; set; }
 
         // Attributes from binary subrecords — resolved to (originalPlugin, localFormId) tuples
         public (string plugin, uint localId)? Race    { get; set; }
@@ -75,7 +93,12 @@ internal class EsmNpcParser
         string originalPlugin, uint localFormId,
         Dictionary<uint, string>? stringTable)
     {
-        var entry = new NpcEntry { OriginalPlugin = originalPlugin, LocalFormId = localFormId };
+        var entry = new NpcEntry
+        {
+            OriginalPlugin = originalPlugin,
+            ScanningPlugin = pluginName,
+            LocalFormId    = localFormId
+        };
         int pos          = 0;
         int keywordCount = 0;
 
@@ -84,6 +107,8 @@ internal class EsmNpcParser
             var subTag  = Encoding.ASCII.GetString(data, pos, 4); pos += 4;
             var subSize = System.BitConverter.ToUInt16(data, pos); pos += 2;
             if (pos + subSize > data.Length) break;
+
+            if (AppearanceTags.Contains(subTag)) entry.HasAppearanceData = true;
 
             switch (subTag)
             {

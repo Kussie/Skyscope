@@ -555,7 +555,83 @@
             <!-- Tab: Settings (always enabled) -->
             <TabItem x:Name="SettingsTab" Header="Settings">
                 <Grid Margin="16">
-                    <Border Style="{StaticResource CardStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Card: Ignored Plugins -->
+                    <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Ignored Plugins"
+                                       FontSize="12" FontWeight="Bold" Foreground="#ECEFF4" Margin="0,0,0,4"/>
+                            <TextBlock Grid.Row="1"
+                                       Text="Plugins listed here are excluded from appearance-conflict detection — their NPC appearance overrides won't appear as 'Plugin' sources. Creation Club (cc*) content is always excluded. Changes apply on the next analysis."
+                                       FontSize="10" Foreground="#8C9BB5" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                            <!-- Add row -->
+                            <Grid Grid.Row="2" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="IgnoredPluginInput" Grid.Column="0"
+                                         Height="28" VerticalContentAlignment="Center" Padding="6,0"
+                                         Background="#2E3440" Foreground="#ECEFF4"
+                                         CaretBrush="#ECEFF4" BorderBrush="#4C566A"
+                                         BorderThickness="1" FontSize="10"
+                                         ToolTip="Enter a plugin filename, e.g. SomeMod.esp"/>
+                                <Button Grid.Column="1" Content="Add" Width="80" Height="28" Margin="8,0,0,0"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Click="AddIgnoredPlugin_Click"/>
+                            </Grid>
+
+                            <!-- Ignored plugin list -->
+                            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" MaxHeight="160">
+                                <ItemsControl x:Name="IgnoredPluginList" Margin="0,0,8,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="32"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding}"
+                                                           FontSize="11" Foreground="#ECEFF4"
+                                                           VerticalAlignment="Center" Margin="2,0,8,0"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Background="Transparent"
+                                                           Cursor="Hand"
+                                                           MouseLeftButtonUp="CopyPluginName_Click"
+                                                           ToolTip="Click to copy the plugin name"/>
+                                                <Button Grid.Column="1"
+                                                        Width="28" Height="28"
+                                                        Style="{StaticResource DangerButtonStyle}"
+                                                        Tag="{Binding}"
+                                                        Click="RemoveIgnoredPlugin_Click"
+                                                        ToolTip="Remove from ignored plugins">
+                                                    <Viewbox Width="14" Height="14">
+                                                        <Path Fill="#ECEFF4"
+                                                              Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                                    </Viewbox>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <!-- Card: Appearance Thumbnails -->
+                    <Border Grid.Row="1" Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -605,7 +681,10 @@
                                                                FontSize="11" Foreground="#ECEFF4"
                                                                VerticalAlignment="Center" Margin="2,0,8,0"
                                                                TextTrimming="CharacterEllipsis"
-                                                               ToolTip="{Binding PluginName}"/>
+                                                               Background="Transparent"
+                                                               Cursor="Hand"
+                                                               MouseLeftButtonUp="CopyPluginName_Click"
+                                                               ToolTip="Click to copy the plugin name"/>
                                                     <TextBox Grid.Column="1"
                                                              Text="{Binding Directory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                              Height="28" VerticalContentAlignment="Center" Padding="6,0"
@@ -668,6 +747,25 @@
                            FontSize="10" Foreground="#4C566A"
                            HorizontalAlignment="Right" VerticalAlignment="Center"/>
             </Grid>
+        </Border>
+
+        <!-- Toast notification (top-right overlay, shown via ShowToast) -->
+        <Border x:Name="ToastNotification" Grid.RowSpan="3"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,16,16,0" Panel.ZIndex="100"
+                Background="#434C5E" CornerRadius="6" Padding="14,10"
+                Visibility="Collapsed" Opacity="0" IsHitTestVisible="False">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="2" Opacity="0.5"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <Viewbox Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Path Fill="#A3BE8C" Data="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </Viewbox>
+                <TextBlock x:Name="ToastText" Text="Copied to clipboard"
+                           FontSize="12" FontWeight="SemiBold" Foreground="#ECEFF4"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>

@@ -346,6 +346,24 @@
                                                                                            FontSize="9" FontWeight="Bold"
                                                                                            Foreground="#ECEFF4"/>
                                                                             </Border>
+                                                                            <!-- Plugin badge (ESP/ESL appearance overhaul; read-only) -->
+                                                                            <Border Background="#B48EAD" CornerRadius="3"
+                                                                                    Padding="6,2" Margin="4,0,0,0"
+                                                                                    VerticalAlignment="Center">
+                                                                                <Border.Style>
+                                                                                    <Style TargetType="Border">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsPlugin}" Value="True">
+                                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Border.Style>
+                                                                                <TextBlock Text="Plugin"
+                                                                                           FontSize="9" FontWeight="Bold"
+                                                                                           Foreground="#2E3440"/>
+                                                                            </Border>
                                                                             <!-- Winner badge (hidden for additive rule types) -->
                                                                             <Border Background="#A3BE8C" CornerRadius="3"
                                                                                     Padding="6,2" Margin="4,0,0,0"
@@ -369,8 +387,17 @@
                                                                         </StackPanel>
                                                                     </Grid>
 
-                                                                    <!-- Row 2: rule value -->
+                                                                    <!-- Row 2: rule value (hidden for plugin overhaul sources) -->
                                                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                                        <StackPanel.Style>
+                                                                            <Style TargetType="StackPanel">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding ShowRuleValue}" Value="False">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </StackPanel.Style>
                                                                         <TextBlock Text="{Binding RuleValueLabel}"
                                                                                    FontSize="10" Foreground="#8C9BB5"
                                                                                    Margin="0,0,5,0"/>
@@ -395,10 +422,14 @@
                                                                                    Margin="0,0,5,0"/>
                                                                         <TextBlock Text="{Binding RulePlugin}"
                                                                                    FontSize="10" Foreground="#A0AFBE"
-                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   Background="Transparent"
+                                                                                   Cursor="Hand"
+                                                                                   MouseLeftButtonUp="PluginName_Click"
+                                                                                   ToolTip="Click to copy the plugin name"/>
                                                                     </StackPanel>
 
-                                                                    <!-- Row 3: code context -->
+                                                                    <!-- Row 3: code context (hidden for plugin overhaul sources — no editable line) -->
                                                                     <local:CodeContextBlock
                                                                         HasPrecedingLine="{Binding HasPrecedingLine}"
                                                                         PrecedingLineNumber="{Binding PrecedingLineNumber}"
@@ -408,16 +439,45 @@
                                                                         HasFollowingLine="{Binding HasFollowingLine}"
                                                                         FollowingLineNumber="{Binding FollowingLineNumber}"
                                                                         FollowingLine="{Binding FollowingLine}"
-                                                                        Margin="0,6,0,0"/>
+                                                                        Margin="0,6,0,0">
+                                                                        <local:CodeContextBlock.Style>
+                                                                            <Style TargetType="local:CodeContextBlock">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding ShowCodeContext}" Value="False">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </local:CodeContextBlock.Style>
+                                                                    </local:CodeContextBlock>
 
-                                                                    <!-- Row 4: file path (relative to Skyrim root) -->
+                                                                    <!-- Row 4: file path (relative to Skyrim root; hidden for plugin sources) -->
                                                                     <TextBlock Text="{Binding DisplayPath}"
                                                                                FontSize="9" Foreground="#8C99A8"
                                                                                Margin="0,4,0,0"
-                                                                               TextTrimming="CharacterEllipsis"/>
+                                                                               TextTrimming="CharacterEllipsis">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsPlugin}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
 
-                                                                    <!-- Row 5: action buttons -->
+                                                                    <!-- Row 5: action buttons (hidden for plugin overhaul sources — read-only) -->
                                                                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                                        <StackPanel.Style>
+                                                                            <Style TargetType="StackPanel">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding ShowActions}" Value="False">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </StackPanel.Style>
                                                                         <!-- Make Winner (winner-takes-all types, unless all probabilistic) -->
                                                                         <Button Content="Make Winner"
                                                                                 Tag="{Binding}"

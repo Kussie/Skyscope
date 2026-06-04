@@ -68,6 +68,12 @@ public class ModReferenceLibrary
     // Plugins that have at least one OTFT ref (for targeted outfit enrichment)
     private readonly HashSet<string> _outfitRefPlugins = new(StringComparer.OrdinalIgnoreCase);
 
+    // (originPlugin.lower, localFormId) → ordered list of plugins that override this NPC's
+    // appearance, in load order. Populated by PluginEnricher; read by ConflictDetector to add
+    // plugin appearance overhauls as conflict sources.
+    private readonly Dictionary<(string, uint), List<(string OverridePlugin, int LoadOrderIndex)>>
+        _appearanceOverrides = new();
+
     private int _npcRecordCount;
 
     public int NpcRecordCount => _npcRecordCount;
@@ -181,6 +187,30 @@ public class ModReferenceLibrary
         if (string.IsNullOrEmpty(ri.ResolvedName)) return 0;
         return string.Equals(ri.ResolvedName, editorId, StringComparison.OrdinalIgnoreCase) ? 1 : 2;
     }
+
+    // ── Appearance overrides (plugin overhauls) ──────────────────────────────
+
+    // Records that plugin `overridePlugin` overrides NPC (originPlugin, localFormId) with its
+    // own appearance data. Appended in load order; duplicate plugins for the same record are
+    // ignored. Read back via AppearanceOverrides during conflict detection.
+    public void AddAppearanceOverride(string originPlugin, uint localFormId, string overridePlugin, int loadOrderIndex)
+    {
+        if (string.IsNullOrEmpty(originPlugin) || string.IsNullOrEmpty(overridePlugin)) return;
+
+        var key = (originPlugin.ToLowerInvariant(), localFormId);
+        if (!_appearanceOverrides.TryGetValue(key, out var list))
+        {
+            list = new List<(string, int)>();
+            _appearanceOverrides[key] = list;
+        }
+
+        if (!list.Any(e => string.Equals(e.OverridePlugin, overridePlugin, StringComparison.OrdinalIgnoreCase)))
+            list.Add((overridePlugin, loadOrderIndex));
+    }
+
+    // (originPlugin.lower, localFormId) → ordered overriding plugins. Consumed by ConflictDetector.
+    public IReadOnlyDictionary<(string OriginPlugin, uint LocalFormId), List<(string OverridePlugin, int LoadOrderIndex)>>
+        AppearanceOverrides => _appearanceOverrides;
 
     // Returns all enriched NPC RecordInfos. Used by SpidFilterEvaluator.
     public IEnumerable<RecordInfo> GetAllNpcs() =>

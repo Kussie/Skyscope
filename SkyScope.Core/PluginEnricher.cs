@@ -14,8 +14,14 @@ public class PluginEnricher
     private static readonly HashSet<string> ObjectGroups = new()
         { "STAT", "FURN", "DOOR", "ACTI", "CONT", "MISC", "MSTT", "TREE" };
 
-    public void Enrich(ModReferenceLibrary library, string skyrimGameDirectory, IProgress<string>? progress = null)
+    public void Enrich(ModReferenceLibrary library, string skyrimGameDirectory,
+                       IProgress<string>? progress = null,
+                       IEnumerable<string>? ignoredAppearancePlugins = null)
     {
+        var ignoredPlugins = ignoredAppearancePlugins != null
+            ? new HashSet<string>(ignoredAppearancePlugins, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         var pluginPaths = PluginPathResolver.GetOrderedPluginPaths(skyrimGameDirectory);
 
         progress?.Report($"Scanning {pluginPaths.Count} plugin(s) for NPC records…");
@@ -58,6 +64,16 @@ public class PluginEnricher
                         attrs.Factions.AddRange(npc.Factions);
                     }
                     library.EnrichNpc(npc.OriginalPlugin, npc.LocalFormId, npc.EditorId, npc.FullName, attrs);
+
+                    // Record appearance overhauls: a plugin overriding an existing NPC's record
+                    // with its own face data, unless that plugin is on the ignore list (base game,
+                    // DLCs, Unofficial patches by default) or is Creation Club content — which
+                    // override vanilla records as part of the game, not as overhaul conflicts.
+                    // `i` is the load-order position (ascending).
+                    if (npc.IsOverride && npc.HasAppearanceData
+                        && !ignoredPlugins.Contains(npc.ScanningPlugin)
+                        && !VanillaPlugins.IsCreationClub(npc.ScanningPlugin))
+                        library.AddAppearanceOverride(npc.OriginalPlugin, npc.LocalFormId, npc.ScanningPlugin, i);
                 }
 
                 if (npcResult.Npcs.Count > 0)

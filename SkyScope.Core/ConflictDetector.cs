@@ -55,6 +55,44 @@ public class ConflictDetector
             }
         }
 
+        // Merge plugin appearance overhauls as additional (read-only) sources. They bucket by the
+        // same canonical key as config rules, so a SPID/SkyPatcher appearance rule and a plugin
+        // override of the same NPC land together. Lone overhauls (one source) are dropped by the
+        // Count < 2 gate in BuildConflicts; two overhauls, or one overhaul plus a config rule,
+        // surface — matching the confirmed broad scope.
+        if (library != null)
+        {
+            foreach (var ((originPlugin, localFormId), overrides) in library.AppearanceOverrides)
+            {
+                var npcRef = new NpcReference
+                {
+                    RefType = NpcRefType.RecordId,
+                    Plugin  = originPlugin,
+                    FormId  = localFormId.ToString("X")
+                };
+
+                var key = ResolveKey(npcRef, library);
+                if (string.IsNullOrEmpty(key)) continue;
+
+                if (!appearanceMap.TryGetValue(key, out var entry))
+                {
+                    entry = (npcRef, new List<ConflictSource>());
+                    appearanceMap[key] = entry;
+                }
+
+                foreach (var (overridePlugin, loadOrderIndex) in overrides)
+                {
+                    entry.Sources.Add(new ConflictSource
+                    {
+                        FilePath       = overridePlugin,
+                        RuleValue      = $"{overridePlugin}|{localFormId:X8}",
+                        SourceTool     = "Plugin",
+                        LoadOrderIndex = loadOrderIndex
+                    });
+                }
+            }
+        }
+
         // TotalFilesScanned is set by the caller from the actual on-disk scan count.
         var summary = new ConflictSummary();
 
