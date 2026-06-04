@@ -35,7 +35,7 @@
                                  Background="Transparent" BorderThickness="0"
                                  Foreground="#ECEFF4" CaretBrush="#ECEFF4"
                                  FontSize="11" Height="28" VerticalContentAlignment="Center"
-                                 Padding="28,0,8,0"
+                                 Padding="28,0,28,0"
                                  TextChanged="SearchBox_TextChanged"/>
                         <TextBlock Text="Search history…" FontSize="11" Foreground="#4C566A"
                                    VerticalAlignment="Center" Margin="28,0,0,0"
@@ -54,6 +54,8 @@
                         <TextBlock Text="⌕" FontSize="15" Foreground="#4C566A"
                                    VerticalAlignment="Center" Margin="8,0,0,0"
                                    IsHitTestVisible="False"/>
+                        <Button Style="{StaticResource ClearTextButton}"
+                                local:TextBoxAssist.ClearTarget="{Binding ElementName=SearchBox}"/>
                     </Grid>
                 </Border>
 

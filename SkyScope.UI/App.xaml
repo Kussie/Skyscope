@@ -1,8 +1,50 @@
 <Application x:Class="SkyScope.UI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SkyScope.UI"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+
+        <!-- Embedded clear (×) button for text boxes. Place inside the box's container, set
+             local:TextBoxAssist.ClearTarget to the TextBox; it shows only when that box has text
+             and clears it on click. -->
+        <Style x:Key="ClearTextButton" TargetType="Button">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="ToolTip" Value="Clear"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="10">
+                            <Viewbox Width="11" Height="11" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path x:Name="icon" Fill="#8C9BB5"
+                                      Data="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </Viewbox>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg"   Property="Background" Value="#4C566A"/>
+                                <Setter TargetName="icon" Property="Fill"       Value="#ECEFF4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <!-- Hide the button while the target box is empty. -->
+                <DataTrigger Value=""
+                             Binding="{Binding (local:TextBoxAssist.ClearTarget).Text, RelativeSource={RelativeSource Self}}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
     </Application.Resources>
 </Application>
