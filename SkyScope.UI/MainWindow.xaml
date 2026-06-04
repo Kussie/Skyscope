@@ -32,6 +32,18 @@
             <Setter Property="Padding" Value="12"/>
         </Style>
 
+        <!-- Zebra striping for the Settings list rows (used with ItemsControl AlternationCount="2"). -->
+        <Style x:Key="SettingsRowStyle" TargetType="Grid">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Style.Triggers>
+                <DataTrigger Value="1"
+                             Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}">
+                    <Setter Property="Background" Value="#434C5E"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#A3BE8C"/>
             <Setter Property="Foreground" Value="#2E3440"/>
@@ -556,12 +568,18 @@
             <TabItem x:Name="SettingsTab" Header="Settings">
                 <Grid Margin="16">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
+                <ScrollViewer x:Name="SettingsScroll" Grid.Row="0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="0,0,6,0">
+                    <StackPanel RequestBringIntoView="SettingsRow_RequestBringIntoView">
+
                     <!-- Card: Ignored Plugins -->
-                    <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                    <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -594,11 +612,13 @@
                             </Grid>
 
                             <!-- Ignored plugin list -->
-                            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" MaxHeight="160">
-                                <ItemsControl x:Name="IgnoredPluginList" Margin="0,0,8,0">
+                            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" MaxHeight="300"
+                                          PreviewMouseWheel="InnerScrollViewer_PreviewMouseWheel">
+                                <ItemsControl x:Name="IgnoredPluginList" Margin="0,0,8,0" AlternationCount="2">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid Margin="0,0,0,4">
+                                            <Grid Style="{StaticResource SettingsRowStyle}"
+                                                  RequestBringIntoView="SettingsRow_RequestBringIntoView">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="32"/>
@@ -631,13 +651,12 @@
                     </Border>
 
                     <!-- Card: Appearance Thumbnails -->
-                    <Border Grid.Row="1" Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
@@ -661,16 +680,18 @@
                             </Grid>
 
                             <!-- Plugin list -->
-                            <Grid Grid.Row="3">
+                            <Grid Grid.Row="3" MinHeight="220">
                                 <TextBlock x:Name="SettingsEmptyText"
                                            Text="No appearance plugins yet. Run an analysis to discover them."
                                            FontSize="11" Foreground="#4C566A"
                                            VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl x:Name="PluginThumbnailList" Margin="0,0,8,0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="460"
+                                              PreviewMouseWheel="InnerScrollViewer_PreviewMouseWheel">
+                                    <ItemsControl x:Name="PluginThumbnailList" Margin="0,0,8,0" AlternationCount="2">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Grid Margin="0,0,0,6">
+                                                <Grid Style="{StaticResource SettingsRowStyle}"
+                                                      RequestBringIntoView="SettingsRow_RequestBringIntoView">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" MinWidth="180"/>
                                                         <ColumnDefinition Width="2*"/>
@@ -717,22 +738,26 @@
                                 </ScrollViewer>
                             </Grid>
 
-                            <!-- Save row -->
-                            <Grid Grid.Row="4" Margin="0,12,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="SettingsStatusText" Grid.Column="0"
-                                           FontSize="10" Foreground="#88C0D0"
-                                           VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
-                                <Button x:Name="SaveAppSettingsButton" Grid.Column="1"
-                                        Content="Save Settings" Width="130" Height="32"
-                                        Style="{StaticResource PrimaryButtonStyle}"
-                                        Click="SaveAppSettingsButton_Click"/>
-                            </Grid>
                         </Grid>
                     </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Floating save bar: pinned to the bottom of the Settings tab, always visible -->
+                <Grid Grid.Row="1" Margin="0,12,6,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="SettingsStatusText" Grid.Column="0"
+                               FontSize="10" Foreground="#88C0D0"
+                               VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                    <Button x:Name="SaveAppSettingsButton" Grid.Column="1"
+                            Content="Save Settings" Width="130" Height="32"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="SaveAppSettingsButton_Click"/>
+                </Grid>
                 </Grid>
             </TabItem>
 

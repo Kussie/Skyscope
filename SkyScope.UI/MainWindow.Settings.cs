@@ -142,6 +142,30 @@ public partial class MainWindow
     private void UpdateSettingsEmptyState() =>
         SettingsEmptyText.Visibility = _pluginThumbnailRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
+    // Clicking a row in a scrolled list otherwise triggers WPF's RequestBringIntoView, which scrolls
+    // the page/list to "fully reveal" the row — yanking the panels so the element shifts out from
+    // under the cursor and the click never lands. Suppress it; these lists are navigated with the
+    // wheel and scrollbars, so no auto-scroll-into-view is needed.
+    private void SettingsRow_RequestBringIntoView(object sender, System.Windows.RequestBringIntoViewEventArgs e)
+        => e.Handled = true;
+
+    // The two settings lists have their own ScrollViewers. Once an inner list reaches its top or
+    // bottom, forward further wheel scrolling to the page-level ScrollViewer so the whole Settings
+    // tab keeps scrolling smoothly instead of the wheel getting trapped in the inner list.
+    private void InnerScrollViewer_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ScrollViewer inner) return;
+
+        var atTop    = inner.VerticalOffset <= 0;
+        var atBottom = inner.VerticalOffset >= inner.ScrollableHeight;
+
+        if (inner.ScrollableHeight <= 0 || (e.Delta > 0 && atTop) || (e.Delta < 0 && atBottom))
+        {
+            e.Handled = true;
+            SettingsScroll.ScrollToVerticalOffset(SettingsScroll.VerticalOffset - e.Delta);
+        }
+    }
+
     private void BrowseThumbnailDir_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.Button { Tag: PluginThumbnailRow row }) return;

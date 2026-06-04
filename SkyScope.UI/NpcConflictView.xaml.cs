@@ -220,6 +220,11 @@ public partial class NpcConflictView : ConflictViewBase
                         SpidNpcIdentifier   = src.SpidNpcIdentifier,
                         IsAdditive          = isAdditive,
                         IsProbabilistic     = allProbabilistic,
+                        // "Make Winner" only comments out other config (SPID/SkyPatcher) sources and
+                        // never touches plugins — so it's pointless when this is the only config
+                        // source (e.g. a lone SkyPatcher rule paired with a plugin overhaul). Hide
+                        // it unless there's another config source to resolve against.
+                        CanMakeWinner       = configSources.Count >= 2,
                         IsWinner            = !isAdditive && !allProbabilistic &&
                                              winner != null &&
                                              string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
@@ -670,6 +675,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public bool    HasPortrait         => !string.IsNullOrEmpty(PortraitPath);
     public bool    IsAdditive          { get; init; }
     public bool    IsProbabilistic     { get; init; }
+    public bool    CanMakeWinner       { get; init; } = true;
     public string  SourceTool          { get; init; } = "SkyPatcher";
     public int?    SpidChance          { get; init; }
     public string? SpidNpcIdentifier   { get; init; }

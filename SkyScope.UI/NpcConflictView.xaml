@@ -498,6 +498,9 @@
                                                                                         <DataTrigger Binding="{Binding IsProbabilistic}" Value="True">
                                                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                                                         </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding CanMakeWinner}" Value="False">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
                                                                                     </Style.Triggers>
                                                                                 </Style>
                                                                             </Button.Style>
