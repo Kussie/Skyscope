@@ -331,12 +331,12 @@
                                                                                     Padding="6,2" Margin="4,0,0,0"
                                                                                     VerticalAlignment="Center">
                                                                                 <TextBlock FontSize="9" Foreground="#88C0D0">
-                                                                                    <Run Text="{Binding LoadPosition, Mode=OneTime}"/>
+                                                                                    <Run Text="{Binding LoadPosition}"/>
                                                                                     <Run Text=" of "/>
-                                                                                    <Run Text="{Binding TotalSources, Mode=OneTime}"/>
+                                                                                    <Run Text="{Binding TotalSources}"/>
                                                                                 </TextBlock>
                                                                             </Border>
-                                                                            <!-- SPID badge -->
+                                                                            <!-- SPID chance badge ("Chance NN%"; same as the BOS tab) -->
                                                                             <Border Background="#81A1C1" CornerRadius="3"
                                                                                     Padding="6,2" Margin="4,0,0,0"
                                                                                     VerticalAlignment="Center">
@@ -344,33 +344,15 @@
                                                                                     <Style TargetType="Border">
                                                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                                                         <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding IsSpid}" Value="True">
+                                                                                            <DataTrigger Binding="{Binding HasSpidChance}" Value="True">
                                                                                                 <Setter Property="Visibility" Value="Visible"/>
                                                                                             </DataTrigger>
                                                                                         </Style.Triggers>
                                                                                     </Style>
                                                                                 </Border.Style>
-                                                                                <TextBlock Text="{Binding SpidBadgeText}"
+                                                                                <TextBlock Text="{Binding SpidChanceBadgeText}"
                                                                                            FontSize="9" FontWeight="Bold"
                                                                                            Foreground="#ECEFF4"/>
-                                                                            </Border>
-                                                                            <!-- Plugin badge (ESP/ESL appearance overhaul; read-only) -->
-                                                                            <Border Background="#B48EAD" CornerRadius="3"
-                                                                                    Padding="6,2" Margin="4,0,0,0"
-                                                                                    VerticalAlignment="Center">
-                                                                                <Border.Style>
-                                                                                    <Style TargetType="Border">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding IsPlugin}" Value="True">
-                                                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                                            </DataTrigger>
-                                                                                        </Style.Triggers>
-                                                                                    </Style>
-                                                                                </Border.Style>
-                                                                                <TextBlock Text="Plugin"
-                                                                                           FontSize="9" FontWeight="Bold"
-                                                                                           Foreground="#2E3440"/>
                                                                             </Border>
                                                                             <!-- Winner badge (hidden for additive rule types) -->
                                                                             <Border Background="#A3BE8C" CornerRadius="3"
@@ -391,6 +373,14 @@
                                                                                 </Border.Style>
                                                                                 <TextBlock Text="WINNER" FontSize="9"
                                                                                            FontWeight="Bold" Foreground="#2E3440"/>
+                                                                            </Border>
+                                                                            <!-- Conflict type badge (always last): Skypatcher / SPID / Plugin -->
+                                                                            <Border Background="#B48EAD" CornerRadius="3"
+                                                                                    Padding="6,2" Margin="4,0,0,0"
+                                                                                    VerticalAlignment="Center">
+                                                                                <TextBlock Text="{Binding TypeBadgeText}"
+                                                                                           FontSize="9" FontWeight="Bold"
+                                                                                           Foreground="#2E3440"/>
                                                                             </Border>
                                                                         </StackPanel>
                                                                     </Grid>
@@ -507,22 +497,15 @@
                                                                                 </Style>
                                                                             </Button.Style>
                                                                         </Button>
-                                                                        <!-- Remove (additive types: Spell / Perk, or all-probabilistic outfit groups) -->
+                                                                        <!-- Remove: comments out (or breaks out of a multi-NPC rule) just this
+                                                                             source. Shown for every editable config source; plugin sources have
+                                                                             no action buttons (the whole panel is hidden via ShowActions). -->
                                                                         <Button Content="Remove"
                                                                                 Tag="{Binding}"
                                                                                 Click="RemoveSource_Click">
                                                                             <Button.Style>
                                                                                 <Style TargetType="Button" BasedOn="{StaticResource ConflictDangerButton}">
                                                                                     <Setter Property="Margin" Value="0,0,6,0"/>
-                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding IsAdditive}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                                        </DataTrigger>
-                                                                                        <DataTrigger Binding="{Binding IsProbabilistic}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
                                                                                 </Style>
                                                                             </Button.Style>
                                                                         </Button>

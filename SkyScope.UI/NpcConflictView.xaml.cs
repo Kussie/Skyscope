@@ -545,11 +545,7 @@ public partial class NpcConflictView : ConflictViewBase
             }
             else if (vm != null)
             {
-                vm.HasAppearance = vm.Groups.Any(g => g.RuleType == RuleType.Appearance);
-                vm.HasSkin       = vm.Groups.Any(g => g.RuleType == RuleType.Skin);
-                vm.HasOutfit     = vm.Groups.Any(g => g.RuleType == RuleType.OutfitDefault);
-                vm.HasSpell      = vm.Groups.Any(g => g.RuleType == RuleType.Spell);
-                vm.HasPerk       = vm.Groups.Any(g => g.RuleType == RuleType.Perk);
+                RefreshNpcTypeFlags(vm);
             }
         }
     }
@@ -587,22 +583,52 @@ public partial class NpcConflictView : ConflictViewBase
 
         if (group.Sources.Count < 2)
         {
+            // The conflict no longer has 2+ sources — drop the whole group.
             var vm = group.Parent;
             if (vm != null)
             {
                 vm.Groups.Remove(group);
                 if (vm.Groups.Count == 0)
-                {
                     _allNpcs.Remove(vm);
-                    ApplyFilter();
-                }
                 else
-                {
-                    vm.HasSpell = vm.Groups.Any(g => g.RuleType == RuleType.Spell);
-                    vm.HasPerk  = vm.Groups.Any(g => g.RuleType == RuleType.Perk);
-                    ApplyFilter();
-                }
+                    RefreshNpcTypeFlags(vm);
+                ApplyFilter();
             }
+        }
+        else
+        {
+            // Group survives — re-derive positions, winner badge and Make-Winner availability.
+            RefreshGroupSourceStates(group);
+        }
+    }
+
+    // Recomputes the NPC header's conflict-type badges (A/S/O/Sp/P) from its remaining groups.
+    private static void RefreshNpcTypeFlags(NpcConflictViewModel vm)
+    {
+        vm.HasAppearance = vm.Groups.Any(g => g.RuleType == RuleType.Appearance);
+        vm.HasSkin       = vm.Groups.Any(g => g.RuleType == RuleType.Skin);
+        vm.HasOutfit     = vm.Groups.Any(g => g.RuleType == RuleType.OutfitDefault);
+        vm.HasSpell      = vm.Groups.Any(g => g.RuleType == RuleType.Spell);
+        vm.HasPerk       = vm.Groups.Any(g => g.RuleType == RuleType.Perk);
+    }
+
+    // After a source is removed but the group still has 2+ sources, re-derive each source's load
+    // position, winner badge, and Make-Winner availability (config sources rank above plugins;
+    // Make Winner only makes sense with another config source to resolve against).
+    private static void RefreshGroupSourceStates(NpcConflictGroup group)
+    {
+        var configSources = group.Sources.Where(s => !s.IsPlugin).ToList();
+        var winner = configSources.Count > 0
+            ? configSources[^1]
+            : group.Sources.Count > 0 ? group.Sources[^1] : null;
+
+        for (int i = 0; i < group.Sources.Count; i++)
+        {
+            var s = group.Sources[i];
+            s.LoadPosition  = i + 1;
+            s.TotalSources  = group.Sources.Count;
+            s.CanMakeWinner = configSources.Count >= 2;
+            s.IsWinner      = !s.IsAdditive && !s.IsProbabilistic && winner != null && ReferenceEquals(s, winner);
         }
     }
 }
@@ -665,8 +691,10 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public string  ConflictLineText    { get; init; } = "";
     public string? PrecedingLine       { get; init; }
     public string? FollowingLine       { get; init; }
-    public int     LoadPosition        { get; init; }
-    public int     TotalSources        { get; init; }
+    private int _loadPosition;
+    public int     LoadPosition        { get => _loadPosition; set { _loadPosition = value; OnPropertyChanged(); } }
+    private int _totalSources;
+    public int     TotalSources        { get => _totalSources; set { _totalSources = value; OnPropertyChanged(); } }
     public string  RuleValue           { get; init; } = "";
     public string  ResolvedRuleDisplay { get; init; } = "";
     public string  RulePlugin          { get; init; } = "";
@@ -675,14 +703,27 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public bool    HasPortrait         => !string.IsNullOrEmpty(PortraitPath);
     public bool    IsAdditive          { get; init; }
     public bool    IsProbabilistic     { get; init; }
-    public bool    CanMakeWinner       { get; init; } = true;
+    private bool _canMakeWinner = true;
+    public bool    CanMakeWinner       { get => _canMakeWinner; set { _canMakeWinner = value; OnPropertyChanged(); } }
     public string  SourceTool          { get; init; } = "SkyPatcher";
     public int?    SpidChance          { get; init; }
     public string? SpidNpcIdentifier   { get; init; }
     public NpcConflictGroup? Group     { get; set;  }
 
     public bool   IsSpid              => SourceTool == "SPID";
-    public string SpidBadgeText       => SpidChance.HasValue ? $"SPID  {SpidChance.Value}%" : "SPID";
+
+    // SPID chance badge — same as the Base Object Swapper tab: "Chance NN%", shown only when the
+    // SPID rule carries a chance value.
+    public bool   HasSpidChance       => SpidChance.HasValue;
+    public string SpidChanceBadgeText => SpidChance.HasValue ? $"Chance {SpidChance.Value}%" : "";
+
+    // Conflict type badge (same style as the Plugin badge), always shown as the last badge.
+    public string TypeBadgeText       => SourceTool switch
+    {
+        "SPID"   => "SPID",
+        "Plugin" => "Plugin",
+        _        => "Skypatcher"
+    };
 
     // Plugin appearance-overhaul source: read-only (no editable file). SkyPatcher/SPID override
     // it at runtime, so it never carries action buttons and its rule-value/code-context rows
