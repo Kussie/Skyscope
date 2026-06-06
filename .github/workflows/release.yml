@@ -24,7 +24,7 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: Publish
-        run: dotnet publish SkyScope.UI/SkyScope.UI.csproj -c Release -r win-x64 --self-contained true -o publish
+        run: dotnet publish SkyScope.UI/SkyScope.UI.csproj -c Release -r win-x64 --self-contained true -o Skyscope
 
       - name: Generate version tag
         id: version
@@ -38,7 +38,7 @@ jobs:
 
       - name: Write version file
         shell: pwsh
-        run: Set-Content -Path publish\version.txt -Value "${{ steps.version.outputs.tag }}" -NoNewline
+        run: Set-Content -Path Skyscope\version.txt -Value "${{ steps.version.outputs.tag }}" -NoNewline
 
       - name: Tag release
         shell: bash
@@ -50,7 +50,7 @@ jobs:
 
       - name: Package
         shell: pwsh
-        run: Compress-Archive -Path publish\* -DestinationPath SkyScope-${{ steps.version.outputs.tag }}.zip
+        run: Compress-Archive -Path Skyscope -DestinationPath SkyScope-${{ steps.version.outputs.tag }}.zip
 
       - name: Create release
         uses: softprops/action-gh-release@v2
