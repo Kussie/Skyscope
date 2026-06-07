@@ -213,7 +213,7 @@ public partial class NpcConflictView : ConflictViewBase
                         RulePlugin          = plugin,
                         ShowPortrait        = ruleType == RuleType.Appearance,
                         PortraitPath        = ruleType == RuleType.Appearance
-                                             ? ResolvePortraitPath(portraitIndex, plugin, vm.FormId)
+                                             ? ResolveRulePortrait(portraitIndex, plugin, src.RuleValue, vm.FormId, library)
                                              : null,
                         SourceTool          = src.SourceTool,
                         SpidChance          = src.SpidChance,
@@ -257,6 +257,44 @@ public partial class NpcConflictView : ConflictViewBase
         if (token.Length == 0 || token.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) return "";
 
         return library.ResolvePluginByEditorId(token) ?? "";
+    }
+
+    // Resolves the portrait for an Appearance source. Mugshot packs name images after the FormId of
+    // the record the appearance is copied *from* (e.g. t_Amalee_Replacer.esp\00000800.png), so we
+    // look up the "copies from" record's FormId in the source plugin's folder first, then fall back
+    // to the target NPC's FormId for packs that name images after the NPC instead.
+    private static string? ResolveRulePortrait(
+        Dictionary<string, Dictionary<string, string>> portraitIndex,
+        string plugin, string ruleValue, string npcFormId, ModReferenceLibrary? library)
+    {
+        if (string.IsNullOrEmpty(plugin)) return null;
+
+        var sourceFormId = ResolveRuleFormId(ruleValue, library);
+        return ResolvePortraitPath(portraitIndex, plugin, sourceFormId)
+            ?? ResolvePortraitPath(portraitIndex, plugin, npcFormId);
+    }
+
+    // Resolves the source record's FormId (8-digit) referenced by an Appearance rule value — the
+    // "copies from" record. Inline "Plugin|FormId" / "0xFormId~Plugin" forms carry it directly; a
+    // plain EditorId is resolved through the enriched library.
+    private static string ResolveRuleFormId(string ruleValue, ModReferenceLibrary? library)
+    {
+        if (string.IsNullOrEmpty(ruleValue)) return "";
+        var token = ruleValue.Split(',')[0].Trim();
+        if (token.Length == 0) return "";
+
+        var tildeIdx = token.IndexOf('~');            // SPID form: 0xFormId~Plugin.esp
+        if (tildeIdx >= 0) return FormatFormId(token[..tildeIdx].Trim());
+
+        var pipeIdx = token.IndexOf('|');             // SkyPatcher form: Plugin.esp|FormId
+        if (pipeIdx >= 0) return FormatFormId(token[(pipeIdx + 1)..].Trim());
+
+        if (token.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            return FormatFormId(token);
+
+        // Plain EditorId — resolve through the library.
+        var fid = library?.ResolveFormIdByEditorId(token);
+        return string.IsNullOrEmpty(fid) ? "" : FormatFormId(fid);
     }
 
     // Re-resolves portraits on an already-populated view (e.g. after thumbnail folders change in
