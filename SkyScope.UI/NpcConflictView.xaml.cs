@@ -145,14 +145,15 @@ public partial class NpcConflictView : ConflictViewBase
                 dict[key] = vm;
             }
 
-            // Config sources (SPID/SkyPatcher) sort by file then line as before; plugin overhaul
-            // sources sort by load order. Config sources always rank above plugin sources: SPID and
-            // SkyPatcher apply at runtime on top of whatever plugin record wins, so a plugin can be
-            // the winner only when there is no config source (a plugin-vs-plugin set), where the
-            // highest-load-order plugin wins.
+            // Config sources (SPID/SkyPatcher) sort by SkyPatcher's actual breadth-first load order
+            // (a folder's files before its subfolders'), then by line; plugin overhaul sources sort
+            // by load order. Config sources always rank above plugin sources: SPID and SkyPatcher
+            // apply at runtime on top of whatever plugin record wins, so a plugin can be the winner
+            // only when there is no config source (a plugin-vs-plugin set), where the highest-load-
+            // order plugin wins.
             var configSources = entry.Sources
                 .Where(s => s.SourceTool != "Plugin")
-                .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s.FilePath, SkyPatcherLoadOrderComparer.Instance)
                 .ThenBy(s => s.LineNumber)
                 .ToList();
             var pluginSources = entry.Sources

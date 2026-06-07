@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows;
+using SkyScope.Core;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
@@ -235,7 +236,7 @@ public partial class MainWindow
                 // no config source (plugin-vs-plugin).
                 var configSorted = entry.Sources
                     .Where(s => s.SourceTool != "Plugin")
-                    .OrderBy(s => s.FilePath, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(s => s.FilePath, SkyPatcherLoadOrderComparer.Instance)
                     .ToList();
                 var pluginSorted = entry.Sources
                     .Where(s => s.SourceTool == "Plugin")
