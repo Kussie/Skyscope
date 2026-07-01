@@ -562,14 +562,16 @@ public partial class NpcConflictView : ConflictViewBase
         {
             try
             {
-                if (src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier))
-                    ConflictResolutionHelper.RemoveNpcFromSpidLine(
+                var result = src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier)
+                    ? ConflictResolutionHelper.RemoveNpcFromSpidLine(
                         src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
-                        description, tool(src), HistoryStore);
-                else
-                    ConflictResolutionHelper.CommentOutLine(
+                        description, tool(src), HistoryStore)
+                    : ConflictResolutionHelper.CommentOutLine(
                         src.FilePath, src.LineNumber, src.ConflictLineText,
                         description, tool(src), HistoryStore);
+
+                // Keep the other in-memory sources in the same file valid for the next edit.
+                ApplyEditShift(src, src.FilePath, src.LineNumber, result);
                 commented.Add(src);
             }
             catch (Exception ex)
@@ -613,14 +615,16 @@ public partial class NpcConflictView : ConflictViewBase
 
         try
         {
-            if (src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier))
-                ConflictResolutionHelper.RemoveNpcFromSpidLine(
+            var result = src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier)
+                ? ConflictResolutionHelper.RemoveNpcFromSpidLine(
                     src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
-                    removeDescription, removeTool, HistoryStore);
-            else
-                ConflictResolutionHelper.CommentOutLine(
+                    removeDescription, removeTool, HistoryStore)
+                : ConflictResolutionHelper.CommentOutLine(
                     src.FilePath, src.LineNumber, src.ConflictLineText,
                     removeDescription, removeTool, HistoryStore);
+
+            // Keep the other in-memory sources in the same file valid for the next edit.
+            ApplyEditShift(src, src.FilePath, src.LineNumber, result);
         }
         catch (Exception ex)
         {
@@ -649,6 +653,35 @@ public partial class NpcConflictView : ConflictViewBase
         {
             // Group survives — re-derive positions, winner badge and Make-Winner availability.
             RefreshGroupSourceStates(group);
+        }
+    }
+
+    // After an edit at `atLine` in `filePath`, keep the other in-memory sources consistent so the
+    // next edit in the same file works WITHOUT re-running the analysis:
+    //   • sources on later lines of the same file shift down by the number of inserted lines;
+    //   • when a shared multi-NPC SPID rule was rewritten (one NPC split out but the rule survives),
+    //     the other NPCs still on that line are re-pointed to the rewritten line and given its new
+    //     text (so their captured line/content stay valid).
+    private void ApplyEditShift(NpcTabSourceViewModel edited, string filePath, int atLine, EditResult result)
+    {
+        if (result.LinesInserted == 0) return;
+
+        foreach (var s in _allNpcs.SelectMany(vm => vm.Groups).SelectMany(g => g.Sources))
+        {
+            if (s.SourceTool == "Plugin"
+                || !string.Equals(s.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (s.LineNumber > atLine)
+            {
+                s.LineNumber += result.LinesInserted;
+            }
+            else if (result.RewrittenLine is { } rewritten
+                     && s.LineNumber == atLine && !ReferenceEquals(s, edited))
+            {
+                s.LineNumber       = atLine + result.LinesInserted;
+                s.ConflictLineText = rewritten;
+            }
         }
     }
 
@@ -742,8 +775,14 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public string  FilePath            { get; init; } = "";
     public string  DisplayPath         => ConflictViewBase.ToSkyrimRelativePath(FilePath);
     public string  RuleValueLabel      { get; init; } = "";
-    public int     LineNumber          { get; init; }
-    public string  ConflictLineText    { get; init; } = "";
+    // Settable so the view can bump captured line numbers after an edit inserts a line above them,
+    // keeping further edits in the same file valid without re-running the analysis.
+    private int _lineNumber;
+    public int     LineNumber          { get => _lineNumber; set { _lineNumber = value; OnPropertyChanged(); OnPropertyChanged(nameof(PrecedingLineNumber)); OnPropertyChanged(nameof(FollowingLineNumber)); } }
+    // Settable so a source that shared a multi-NPC rule line can be re-pointed to the rewritten line
+    // (with fewer NPCs) after another NPC is split out of it, without re-running the analysis.
+    private string _conflictLineText = "";
+    public string  ConflictLineText    { get => _conflictLineText; set { _conflictLineText = value; OnPropertyChanged(); } }
     public string? PrecedingLine       { get; init; }
     public string? FollowingLine       { get; init; }
     private int _loadPosition;
