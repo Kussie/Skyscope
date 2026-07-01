@@ -39,15 +39,33 @@ public partial class MainWindow
             _appSettings = new AppSettings();
         }
 
+        // Drop thumbnail folders that no longer exist on disk: keep the plugin row but clear its
+        // path (and unsave it) so stale folders don't silently linger after a mod is moved/removed.
+        var removedStalePaths = false;
         _pluginThumbnailRows.Clear();
         foreach (var kvp in _appSettings.PluginThumbnailDirectories
                      .OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var exists = !string.IsNullOrWhiteSpace(kvp.Value) && Directory.Exists(kvp.Value);
+            if (!string.IsNullOrWhiteSpace(kvp.Value) && !exists)
+                removedStalePaths = true;
+
             _pluginThumbnailRows.Add(new PluginThumbnailRow
             {
                 PluginName = kvp.Key,
-                Directory  = kvp.Value,
-                IsSaved    = !string.IsNullOrWhiteSpace(kvp.Value)
+                Directory  = exists ? kvp.Value : "",
+                IsSaved    = exists
             });
+        }
+
+        if (removedStalePaths)
+        {
+            _appSettings.PluginThumbnailDirectories = _pluginThumbnailRows
+                .Where(r => !string.IsNullOrWhiteSpace(r.Directory))
+                .ToDictionary(r => r.PluginName, r => r.Directory, StringComparer.OrdinalIgnoreCase);
+            try { File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson)); }
+            catch { /* best-effort; the in-memory rows are already cleaned */ }
+        }
 
         PluginThumbnailList.ItemsSource = _pluginThumbnailRows;
 

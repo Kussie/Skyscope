@@ -27,36 +27,73 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Search box -->
-                <Border Grid.Column="0" Background="#2E3440" CornerRadius="3" Margin="0,0,8,0">
-                    <Grid>
-                        <TextBox x:Name="SearchBox"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="#ECEFF4" CaretBrush="#ECEFF4"
-                                 FontSize="11" Height="28" VerticalContentAlignment="Center"
-                                 Padding="28,0,28,0"
-                                 TextChanged="SearchBox_TextChanged"/>
-                        <TextBlock Text="Search NPCs…" FontSize="11" Foreground="#4C566A"
-                                   VerticalAlignment="Center" Margin="28,0,0,0"
-                                   IsHitTestVisible="False">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock Text="⌕" FontSize="15" Foreground="#4C566A"
-                                   VerticalAlignment="Center" Margin="8,0,0,0"
-                                   IsHitTestVisible="False"/>
-                        <Button Style="{StaticResource ClearTextButton}"
-                                local:TextBoxAssist.ClearTarget="{Binding ElementName=SearchBox}"/>
-                    </Grid>
-                </Border>
+                <!-- Search boxes: NPC name (left) + plugin filter (right) -->
+                <Grid Grid.Column="0" Margin="0,0,8,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- NPC name search -->
+                    <Border Grid.Column="0" Background="#2E3440" CornerRadius="3" Margin="0,0,6,0">
+                        <Grid>
+                            <TextBox x:Name="SearchBox"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#ECEFF4" CaretBrush="#ECEFF4"
+                                     FontSize="11" Height="28" VerticalContentAlignment="Center"
+                                     Padding="28,0,28,0"
+                                     TextChanged="SearchBox_TextChanged"/>
+                            <TextBlock Text="Search NPCs…" FontSize="11" Foreground="#4C566A"
+                                       VerticalAlignment="Center" Margin="28,0,0,0"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="⌕" FontSize="15" Foreground="#4C566A"
+                                       VerticalAlignment="Center" Margin="8,0,0,0"
+                                       IsHitTestVisible="False"/>
+                            <Button Style="{StaticResource ClearTextButton}"
+                                    local:TextBoxAssist.ClearTarget="{Binding ElementName=SearchBox}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Plugin filter: hides NPCs with no conflict involving the named plugin -->
+                    <Border Grid.Column="1" Background="#2E3440" CornerRadius="3">
+                        <Grid>
+                            <TextBox x:Name="PluginFilterBox"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#ECEFF4" CaretBrush="#ECEFF4"
+                                     FontSize="11" Height="28" VerticalContentAlignment="Center"
+                                     Padding="10,0,28,0"
+                                     TextChanged="PluginFilterBox_TextChanged"
+                                     ToolTip="Show only NPCs that have a conflict involving a plugin whose name contains this text (all of a matching NPC's conflicts stay visible)"/>
+                            <TextBlock Text="Filter by plugin…" FontSize="11" Foreground="#4C566A"
+                                       VerticalAlignment="Center" Margin="10,0,0,0"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=PluginFilterBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Button Style="{StaticResource ClearTextButton}"
+                                    local:TextBoxAssist.ClearTarget="{Binding ElementName=PluginFilterBox}"/>
+                        </Grid>
+                    </Border>
+                </Grid>
 
                 <!-- Type filter buttons -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,8,0">
@@ -305,7 +342,17 @@
                                                 <ItemsControl ItemsSource="{Binding Sources}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border Style="{StaticResource ConflictSourceCard}">
+                                                            <Border>
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border" BasedOn="{StaticResource ConflictSourceCard}">
+                                                                        <Style.Triggers>
+                                                                            <!-- Losing source after "Make Winner": grey it out (still visible). -->
+                                                                            <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                                <Setter Property="Opacity" Value="0.45"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
                                                                 <Grid>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="*"/>
@@ -324,7 +371,17 @@
                                                                                    Text="{Binding FileName}"
                                                                                    FontSize="12" FontWeight="SemiBold"
                                                                                    Foreground="#ECEFF4"
-                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                                   TextTrimming="CharacterEllipsis">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
                                                                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                                             <!-- Load position -->
                                                                             <Border Background="#4C566A" CornerRadius="3"
@@ -493,26 +550,49 @@
                                                                                         <DataTrigger Binding="{Binding CanMakeWinner}" Value="False">
                                                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                                                         </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
                                                                                     </Style.Triggers>
                                                                                 </Style>
                                                                             </Button.Style>
                                                                         </Button>
                                                                         <!-- Remove: comments out (or breaks out of a multi-NPC rule) just this
                                                                              source. Shown for every editable config source; plugin sources have
-                                                                             no action buttons (the whole panel is hidden via ShowActions). -->
+                                                                             no action buttons (the whole panel is hidden via ShowActions). Hidden
+                                                                             once the source has been resolved (greyed out) by "Make Winner". -->
                                                                         <Button Content="Remove"
                                                                                 Tag="{Binding}"
                                                                                 Click="RemoveSource_Click">
                                                                             <Button.Style>
                                                                                 <Style TargetType="Button" BasedOn="{StaticResource ConflictDangerButton}">
                                                                                     <Setter Property="Margin" Value="0,0,6,0"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                        <!-- Plugins have no editable file to remove. -->
+                                                                                        <DataTrigger Binding="{Binding IsPlugin}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
                                                                                 </Style>
                                                                             </Button.Style>
                                                                         </Button>
+                                                                        <!-- Open File: config sources only (a plugin source has no config file to open). -->
                                                                         <Button Content="Open File"
                                                                                 Tag="{Binding}"
-                                                                                Click="OpenFile_Click"
-                                                                                Style="{StaticResource ConflictAccentButton}"/>
+                                                                                Click="OpenFile_Click">
+                                                                            <Button.Style>
+                                                                                <Style TargetType="Button" BasedOn="{StaticResource ConflictAccentButton}">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsPlugin}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Button.Style>
+                                                                        </Button>
                                                                     </StackPanel>
 
                                                                     </StackPanel>

@@ -185,9 +185,13 @@ public partial class NpcConflictView : ConflictViewBase
             group.Sources = new ObservableCollection<NpcTabSourceViewModel>(
                 sorted.Select((src, idx) =>
                 {
-                    var plugin = ruleType == RuleType.Appearance
-                        ? ResolveRulePlugin(src.RuleValue, library)
-                        : "";
+                    // The plugin this source references (copies-from / outfit / skin / overhaul).
+                    // Recorded on the NPC for the "Filter by plugin" search across all conflict types;
+                    // only surfaced in the UI ("Plugin:" row / portrait) for Appearance sources.
+                    var involvedPlugin = ResolveRulePlugin(src.RuleValue, library);
+                    if (!string.IsNullOrEmpty(involvedPlugin)) vm.InvolvedPlugins.Add(involvedPlugin);
+
+                    var plugin = ruleType == RuleType.Appearance ? involvedPlugin : "";
                     return new NpcTabSourceViewModel
                     {
                         FileName            = Path.GetFileName(src.FilePath),
@@ -221,11 +225,14 @@ public partial class NpcConflictView : ConflictViewBase
                         SpidNpcIdentifier   = src.SpidNpcIdentifier,
                         IsAdditive          = isAdditive,
                         IsProbabilistic     = allProbabilistic,
-                        // "Make Winner" only comments out other config (SPID/SkyPatcher) sources and
-                        // never touches plugins — so it's pointless when this is the only config
-                        // source (e.g. a lone SkyPatcher rule paired with a plugin overhaul). Hide
-                        // it unless there's another config source to resolve against.
-                        CanMakeWinner       = configSources.Count >= 2,
+                        // "Make Winner" comments out the OTHER config (SPID/SkyPatcher) sources and
+                        // never touches plugins. For a config source that means it's useful only
+                        // when there's another config source to beat (2+). For a plugin source it
+                        // comments out every config source so the plugin wins, which is useful as
+                        // soon as there's at least one config source (1+).
+                        CanMakeWinner       = src.SourceTool == "Plugin"
+                                             ? configSources.Count >= 1
+                                             : configSources.Count >= 2,
                         IsWinner            = !isAdditive && !allProbabilistic &&
                                              winner != null &&
                                              string.Equals(src.FilePath, winner.FilePath, StringComparison.OrdinalIgnoreCase) &&
@@ -440,7 +447,8 @@ public partial class NpcConflictView : ConflictViewBase
 
     private void ApplyFilter()
     {
-        var search = SearchBox.Text.Trim();
+        var search       = SearchBox.Text.Trim();
+        var pluginFilter = PluginFilterBox.Text.Trim();
 
         foreach (var vm in _allNpcs)
         {
@@ -458,6 +466,11 @@ public partial class NpcConflictView : ConflictViewBase
             if (vm.FilteredGroups.Count == 0) return false;
             if (vm.IsVanilla  && !_filterVanilla) return false;
             if (!vm.IsVanilla && !_filterModded)  return false;
+            // Plugin filter: hide NPCs whose conflicts don't involve the named plugin at all.
+            // Matching NPCs keep ALL their conflicts (this doesn't hide the non-matching ones).
+            if (!string.IsNullOrEmpty(pluginFilter) &&
+                !vm.InvolvedPlugins.Any(p => p.Contains(pluginFilter, StringComparison.OrdinalIgnoreCase)))
+                return false;
             if (string.IsNullOrEmpty(search)) return true;
             return vm.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || vm.SubText.Contains(search, StringComparison.OrdinalIgnoreCase);
@@ -473,6 +486,9 @@ public partial class NpcConflictView : ConflictViewBase
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
+        StartSearchDebounce(ApplyFilter, () => _allNpcs.Count > 0);
+
+    private void PluginFilterBox_TextChanged(object sender, TextChangedEventArgs e) =>
         StartSearchDebounce(ApplyFilter, () => _allNpcs.Count > 0);
 
     private void FilterA_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterA,  FilterAButton,  ColorAppearance);
@@ -536,8 +552,8 @@ public partial class NpcConflictView : ConflictViewBase
                           && s.LineNumber == winner.LineNumber))
             .ToList();
 
-        var errors   = new List<string>();
-        int modified = 0;
+        var errors    = new List<string>();
+        var commented = new List<NpcTabSourceViewModel>();
 
         var description = $"{group.Parent?.DisplayName ?? "NPC"} — {group.Label} conflict";
         var tool        = (NpcTabSourceViewModel s) => s.IsSpid ? "SPID" : "SkyPatcher";
@@ -554,7 +570,7 @@ public partial class NpcConflictView : ConflictViewBase
                     ConflictResolutionHelper.CommentOutLine(
                         src.FilePath, src.LineNumber, src.ConflictLineText,
                         description, tool(src), HistoryStore);
-                modified++;
+                commented.Add(src);
             }
             catch (Exception ex)
             {
@@ -562,31 +578,26 @@ public partial class NpcConflictView : ConflictViewBase
             }
         }
 
+        // Grey out (deactivate) the losing sources whose rules were commented out; the chosen winner
+        // stays active. The group stays visible so the resolution is shown in place rather than the
+        // conflict vanishing from the list.
+        foreach (var src in commented)
+            src.IsInactive = true;
+
+        if (commented.Count > 0)
+        {
+            // The clicked source is now the effective winner (the others are commented out): move
+            // the WINNER badge to it, and hide its own "Make Winner" so it can't be re-run against
+            // already-commented sources.
+            foreach (var s in group.Sources)
+                s.IsWinner = ReferenceEquals(s, winner);
+            winner.CanMakeWinner = false;
+        }
+
         if (errors.Count > 0)
-        {
             MessageBox.Show(
-                $"Completed with errors:\n\n{string.Join("\n", errors)}\n\n{modified} file(s) were modified.",
+                $"Completed with errors:\n\n{string.Join("\n", errors)}\n\n{commented.Count} file(s) were modified.",
                 "SkyScope — Make Winner", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        else
-        {
-            MessageBox.Show(
-                $"Done — commented out conflicting rules in {modified} file(s).",
-                "SkyScope — Make Winner", MessageBoxButton.OK, MessageBoxImage.Information);
-
-            var vm = group.Parent;
-            vm?.Groups.Remove(group);
-
-            if (vm != null && vm.Groups.Count == 0)
-            {
-                _allNpcs.Remove(vm);
-                ApplyFilter();
-            }
-            else if (vm != null)
-            {
-                RefreshNpcTypeFlags(vm);
-            }
-        }
     }
 
     private void RemoveSource_Click(object sender, RoutedEventArgs e)
@@ -679,6 +690,11 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
     public string FormId                { get; set; } = "";
     public string NormalizedKey         { get; set; } = "";
     public bool   IsVanilla             { get; set; }
+
+    // Distinct plugin names referenced by any of this NPC's conflict sources (copies-from /
+    // outfit / skin / overhaul plugins) — used by the "Filter by plugin" search.
+    public HashSet<string> InvolvedPlugins { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public ObservableCollection<NpcConflictGroup> Groups { get; } = new();
 
     private bool _hasAppearance;
@@ -743,7 +759,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public bool    IsAdditive          { get; init; }
     public bool    IsProbabilistic     { get; init; }
     private bool _canMakeWinner = true;
-    public bool    CanMakeWinner       { get => _canMakeWinner; set { _canMakeWinner = value; OnPropertyChanged(); } }
+    public bool    CanMakeWinner       { get => _canMakeWinner; set { _canMakeWinner = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowActions)); } }
     public string  SourceTool          { get; init; } = "SkyPatcher";
     public int?    SpidChance          { get; init; }
     public string? SpidNpcIdentifier   { get; init; }
@@ -768,7 +784,9 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     // it at runtime, so it never carries action buttons and its rule-value/code-context rows
     // (which describe config-file edits) are hidden.
     public bool   IsPlugin            => SourceTool == "Plugin";
-    public bool   ShowActions         => !IsPlugin;
+    // Config sources always have the action row (Remove / Open File / maybe Make Winner). Plugin
+    // sources only show it to offer "Make Winner" (comment out the config rules so the plugin wins).
+    public bool   ShowActions         => !IsPlugin || CanMakeWinner;
     public bool   ShowRuleValue       => !IsPlugin;
     public bool   ShowCodeContext     => !IsPlugin;
 
@@ -779,6 +797,11 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
 
     private bool _isWinner;
     public bool IsWinner { get => _isWinner; set { _isWinner = value; OnPropertyChanged(); } }
+
+    // Set on the losing sources after "Make Winner": the rule is now commented out, so the card is
+    // greyed and struck through and its action buttons are hidden, while the winner stays active.
+    private bool _isInactive;
+    public bool IsInactive { get => _isInactive; set { _isInactive = value; OnPropertyChanged(); } }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? name = null)
