@@ -37,6 +37,8 @@ public partial class MainWindow : Window
 
     private readonly HistoryStore _historyStore = new();
 
+    private static readonly bool BosScanningEnabled = false;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
         NpcConflictViewControl.ClipboardCopyRequested += (_, message) => ShowToast(message);
         BosConflictViewControl.HistoryStore = _historyStore;
         HistoryViewControl.Refresh(_historyStore);
+        BosTab.Visibility = BosScanningEnabled ? Visibility.Visible : Visibility.Collapsed;
         LoadSettings();
         LoadAppSettings();
         LoadVersion();
@@ -131,9 +134,17 @@ public partial class MainWindow : Window
             var (spidRules, spidFileCount, spidErrors) = await Task.Run(() =>
                 new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
 
-            StatusTextBlock.Text = "Scanning Base Object Swapper files…";
-            var (bosRules, bosFileCount, bosErrors) = await Task.Run(() =>
-                new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+            // BOS support is temporarily disabled (BosScanningEnabled) — empty results flow through
+            // the rest of the pipeline unchanged (empty summary, zero stats, no status suffix).
+            var bosRules     = new List<BosSwapRule>();
+            var bosFileCount = 0;
+            var bosErrors    = new List<string>();
+            if (BosScanningEnabled)
+            {
+                StatusTextBlock.Text = "Scanning Base Object Swapper files…";
+                (bosRules, bosFileCount, bosErrors) = await Task.Run(() =>
+                    new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+            }
 
             // ── Step 2: Build reference library from parsed rules ───────────
 
@@ -213,7 +224,7 @@ public partial class MainWindow : Window
             _lastBosSummary          = bosSummary;
             ReportTab.IsEnabled  = true;
             NpcTab.IsEnabled     = true;
-            BosTab.IsEnabled     = true;
+            BosTab.IsEnabled     = BosScanningEnabled;
             MainTabControl.SelectedIndex = 1;
             DisplayResults(summary, bosSummary);
 

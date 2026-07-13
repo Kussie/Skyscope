@@ -25,20 +25,29 @@ public partial class MainWindow
         BosRulesText.Text            = _stats.BosRuleCount.ToString("N0");
         NpcDbRecordsText.Text     = $"{_stats.DbRecordCount:N0}";
 
-        AppearanceSummaryText.Text = SummaryLine(summary.AppearanceConflicts.Count);
-        SkinSummaryText.Text       = SummaryLine(summary.SkinConflicts.Count);
-        OutfitSummaryText.Text     = SummaryLine(summary.OutfitDefaultConflicts.Count);
-        SpellSummaryText.Text      = SummaryLine(summary.SpellConflicts.Count);
-        PerkSummaryText.Text       = SummaryLine(summary.PerkConflicts.Count);
-        BosSummaryText.Text        = BosSummaryLine(bosSummary.TotalConflicts);
+        var appearance = ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts, showLowChance: false);
+        var skin       = ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,       showLowChance: false);
+        var outfit     = ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance: false);
 
-        var totalAll    = summary.TotalConflicts + bosSummary.TotalConflicts;
-        var activeTypes = (summary.AppearanceConflicts.Count    > 0 ? 1 : 0)
-                        + (summary.SkinConflicts.Count          > 0 ? 1 : 0)
-                        + (summary.OutfitDefaultConflicts.Count > 0 ? 1 : 0)
-                        + (summary.SpellConflicts.Count         > 0 ? 1 : 0)
-                        + (summary.PerkConflicts.Count          > 0 ? 1 : 0)
-                        + (bosSummary.TotalConflicts            > 0 ? 1 : 0);
+        var appearanceCount = CountDistinctNpcs(appearance);
+        var skinCount       = CountDistinctNpcs(skin);
+        var outfitCount     = CountDistinctNpcs(outfit);
+        var spellCount      = CountDistinctNpcs(summary.SpellConflicts);
+        var perkCount       = CountDistinctNpcs(summary.PerkConflicts);
+
+        AppearanceSummaryText.Text = SummaryLine(appearanceCount);
+        SkinSummaryText.Text       = SummaryLine(skinCount);
+        OutfitSummaryText.Text     = SummaryLine(outfitCount);
+        SpellSummaryText.Text      = SummaryLine(spellCount);
+        PerkSummaryText.Text       = SummaryLine(perkCount);
+
+        var totalAll    = appearanceCount + skinCount + outfitCount + spellCount + perkCount + bosSummary.TotalConflicts;
+        var activeTypes = (appearanceCount > 0 ? 1 : 0)
+                        + (skinCount       > 0 ? 1 : 0)
+                        + (outfitCount     > 0 ? 1 : 0)
+                        + (spellCount      > 0 ? 1 : 0)
+                        + (perkCount       > 0 ? 1 : 0)
+                        + (bosSummary.TotalConflicts > 0 ? 1 : 0);
         TotalSummaryText.Text = totalAll == 0
             ? "No conflicts detected"
             : $"{totalAll} conflict(s) across {activeTypes} type(s)";
@@ -50,8 +59,11 @@ public partial class MainWindow
     private static string SummaryLine(int count) =>
         count == 0 ? "No conflicts" : $"{count} NPC(s) affected";
 
-    private static string BosSummaryLine(int count) =>
-        count == 0 ? "No conflicts" : $"{count} object(s) affected";
+    private static int CountDistinctNpcs(List<ConflictEntry> entries) =>
+        entries
+            .Select(e => !string.IsNullOrEmpty(e.ResolvedEditorId) ? e.ResolvedEditorId : e.NpcRef.NormalizedKey)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
 
     private void ClearResults()
     {

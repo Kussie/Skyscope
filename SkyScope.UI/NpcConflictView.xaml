@@ -8,6 +8,474 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ConflictViewResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+    <DataTemplate x:Key="NpcCardTemplate">
+        <Border Style="{StaticResource ConflictItemContainer}">
+            <StackPanel>
+
+                <!-- Header row (clickable) -->
+                <Button Tag="{Binding}" Click="ConflictHeader_Click"
+                        Style="{StaticResource ConflictHeaderButton}">
+                    <Grid Margin="12,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="20"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- NPC name + sub-text -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DisplayName}"
+                                       FontSize="13" FontWeight="SemiBold" Foreground="#ECEFF4"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SubText}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Editor ID: " FontSize="10" Foreground="#8C9BB5"/>
+                                <TextBlock Text="{Binding SubText}" FontSize="10" Foreground="#B8C5D5"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding FormId}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Form ID: " FontSize="10" Foreground="#8C9BB5"/>
+                                <TextBlock Text="{Binding FormId}" FontSize="10" Foreground="#B8C5D5"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Type badges A / S / O / Sp / P -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                    VerticalAlignment="Center" Margin="10,0">
+                            <Border Background="#EBCB8B" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasAppearance}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="A" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
+                            </Border>
+                            <Border Background="#D08770" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSkin}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="S" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
+                            </Border>
+                            <Border Background="#B48EAD" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasOutfit}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="O" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
+                            </Border>
+                            <Border Background="#A3BE8C" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSpell}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="Sp" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
+                            </Border>
+                            <Border Background="#BF616A" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasPerk}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="P" FontSize="9" FontWeight="Bold" Foreground="#ECEFF4"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Expand/collapse chevron -->
+                        <TextBlock Grid.Column="2"
+                                   FontSize="9" Foreground="#4C566A"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="▶"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                            <Setter Property="Text" Value="▼"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Button>
+
+                <!-- Accordion panel -->
+                <Border Style="{StaticResource ConflictAccordionPanel}">
+
+                    <!-- Groups (filtered by active type filters) -->
+                    <ItemsControl ItemsSource="{Binding FilteredGroups}" Margin="12,4,12,12">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,8,0,0">
+
+                                    <!-- Group type header — full-width coloured strip -->
+                                    <Border Background="{Binding BadgeBrush}" CornerRadius="3"
+                                            Padding="10,6" Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="11" FontWeight="Bold" Foreground="#2E3440"/>
+                                    </Border>
+
+                                    <!-- Source cards -->
+                                    <ItemsControl ItemsSource="{Binding Sources}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border>
+                                                    <Border.Style>
+                                                        <Style TargetType="Border" BasedOn="{StaticResource ConflictSourceCard}">
+                                                            <Style.Triggers>
+                                                                <!-- Losing source after "Make Winner": grey it out (still visible). -->
+                                                                <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                    <Setter Property="Opacity" Value="0.45"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <StackPanel Grid.Column="0">
+
+                                                        <!-- Row 1: filename + badges -->
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="{Binding FileName}"
+                                                                       FontSize="12" FontWeight="SemiBold"
+                                                                       Foreground="#ECEFF4"
+                                                                       TextTrimming="CharacterEllipsis">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                                <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                                <!-- Load position -->
+                                                                <Border Background="#4C566A" CornerRadius="3"
+                                                                        Padding="6,2" Margin="4,0,0,0"
+                                                                        VerticalAlignment="Center">
+                                                                    <TextBlock FontSize="9" Foreground="#88C0D0">
+                                                                        <Run Text="{Binding LoadPosition}"/>
+                                                                        <Run Text=" of "/>
+                                                                        <Run Text="{Binding TotalSources}"/>
+                                                                    </TextBlock>
+                                                                </Border>
+                                                                <!-- SPID chance badge ("Chance NN%"; same as the BOS tab) -->
+                                                                <Border Background="#81A1C1" CornerRadius="3"
+                                                                        Padding="6,2" Margin="4,0,0,0"
+                                                                        VerticalAlignment="Center">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasSpidChance}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <TextBlock Text="{Binding SpidChanceBadgeText}"
+                                                                               FontSize="9" FontWeight="Bold"
+                                                                               Foreground="#ECEFF4"/>
+                                                                </Border>
+                                                                <!-- Winner badge (hidden for additive rule types) -->
+                                                                <Border Background="#A3BE8C" CornerRadius="3"
+                                                                        Padding="6,2" Margin="4,0,0,0"
+                                                                        VerticalAlignment="Center">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsWinner}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsAdditive}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <TextBlock Text="WINNER" FontSize="9"
+                                                                               FontWeight="Bold" Foreground="#2E3440"/>
+                                                                </Border>
+                                                                <!-- Conflict type badge (always last): Skypatcher / SPID / Plugin -->
+                                                                <Border Background="#B48EAD" CornerRadius="3"
+                                                                        Padding="6,2" Margin="4,0,0,0"
+                                                                        VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding TypeBadgeText}"
+                                                                               FontSize="9" FontWeight="Bold"
+                                                                               Foreground="#2E3440"/>
+                                                                </Border>
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Row 2: rule value (hidden for plugin overhaul sources) -->
+                                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                            <StackPanel.Style>
+                                                                <Style TargetType="StackPanel">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ShowRuleValue}" Value="False">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </StackPanel.Style>
+                                                            <TextBlock Text="{Binding RuleValueLabel}"
+                                                                       FontSize="10" Foreground="#8C9BB5"
+                                                                       Margin="0,0,5,0"/>
+                                                            <TextBlock Text="{Binding ResolvedRuleDisplay}"
+                                                                       FontSize="10" Foreground="#A0AFBE"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+
+                                                        <!-- Row 2b: source plugin (Appearance only) -->
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                            <StackPanel.Style>
+                                                                <Style TargetType="StackPanel">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding RulePlugin}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </StackPanel.Style>
+                                                            <TextBlock Text="Plugin: "
+                                                                       FontSize="10" Foreground="#8C9BB5"
+                                                                       Margin="0,0,5,0"/>
+                                                            <TextBlock Text="{Binding RulePlugin}"
+                                                                       FontSize="10" Foreground="#A0AFBE"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Background="Transparent"
+                                                                       Cursor="Hand"
+                                                                       MouseLeftButtonUp="PluginName_Click"
+                                                                       ToolTip="Click to copy the plugin name"/>
+                                                        </StackPanel>
+
+                                                        <!-- Row 3: code context (hidden for plugin overhaul sources — no editable line) -->
+                                                        <local:CodeContextBlock
+                                                            HasPrecedingLine="{Binding HasPrecedingLine}"
+                                                            PrecedingLineNumber="{Binding PrecedingLineNumber}"
+                                                            PrecedingLine="{Binding PrecedingLine}"
+                                                            LineNumber="{Binding LineNumber}"
+                                                            LineText="{Binding ConflictLineText}"
+                                                            HasFollowingLine="{Binding HasFollowingLine}"
+                                                            FollowingLineNumber="{Binding FollowingLineNumber}"
+                                                            FollowingLine="{Binding FollowingLine}"
+                                                            Margin="0,6,0,0">
+                                                            <local:CodeContextBlock.Style>
+                                                                <Style TargetType="local:CodeContextBlock">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ShowCodeContext}" Value="False">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </local:CodeContextBlock.Style>
+                                                        </local:CodeContextBlock>
+
+                                                        <!-- Row 4: file path (relative to Skyrim root; hidden for plugin sources) -->
+                                                        <TextBlock Text="{Binding DisplayPath}"
+                                                                   FontSize="9" Foreground="#8C99A8"
+                                                                   Margin="0,4,0,0"
+                                                                   TextTrimming="CharacterEllipsis">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsPlugin}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <!-- Row 5: action buttons (hidden for plugin overhaul sources — read-only) -->
+                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                            <StackPanel.Style>
+                                                                <Style TargetType="StackPanel">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ShowActions}" Value="False">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </StackPanel.Style>
+                                                            <!-- Make Winner (winner-takes-all types, unless all probabilistic) -->
+                                                            <Button Content="Make Winner"
+                                                                    Tag="{Binding}"
+                                                                    Click="MakeWinner_Click">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource ConflictPrimaryButton}">
+                                                                        <Setter Property="Margin" Value="0,0,6,0"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsAdditive}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsProbabilistic}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding CanMakeWinner}" Value="False">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
+                                                            <!-- Remove: comments out (or breaks out of a multi-NPC rule) just this
+                                                                 source. Shown for every editable config source; plugin sources have
+                                                                 no action buttons (the whole panel is hidden via ShowActions). Hidden
+                                                                 once the source has been resolved (greyed out) by "Make Winner". -->
+                                                            <Button Content="Remove"
+                                                                    Tag="{Binding}"
+                                                                    Click="RemoveSource_Click">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource ConflictDangerButton}">
+                                                                        <Setter Property="Margin" Value="0,0,6,0"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                            <!-- Plugins have no editable file to remove. -->
+                                                                            <DataTrigger Binding="{Binding IsPlugin}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
+                                                            <!-- Open File: config sources only (a plugin source has no config file to open). -->
+                                                            <Button Content="Open File"
+                                                                    Tag="{Binding}"
+                                                                    Click="OpenFile_Click">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource ConflictAccentButton}">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsPlugin}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
+                                                        </StackPanel>
+
+                                                        </StackPanel>
+
+                                                        <!-- Per-source portrait (Appearance sources only). Fixed width;
+                                                             height tracks the card content so card height is unchanged. -->
+                                                        <Border Grid.Column="1" Width="120" Margin="10,0,0,0"
+                                                                Background="#272C38" CornerRadius="4"
+                                                                VerticalAlignment="Stretch">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ShowPortrait}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <Grid>
+                                                                <!-- Placeholder shown when this source has no portrait -->
+                                                                <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                                    <StackPanel.Style>
+                                                                        <Style TargetType="StackPanel">
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasPortrait}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </StackPanel.Style>
+                                                                    <Viewbox Width="40" Height="40" HorizontalAlignment="Center">
+                                                                        <Path Fill="#4C566A"
+                                                                              Data="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                                                    </Viewbox>
+                                                                    <TextBlock Text="No portrait" FontSize="9" Foreground="#4C566A"
+                                                                               HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                                                </StackPanel>
+                                                                <!-- Actual portrait (drawn over the placeholder when set) -->
+                                                                <Image Source="{Binding PortraitPath}"
+                                                                       Stretch="Uniform" StretchDirection="DownOnly"
+                                                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                            </Grid>
+                                                        </Border>
+
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                </Border>
+
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -17,13 +485,11 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Filter bar -->
+        <!-- Filter bar (shared across all four sub-tabs below) -->
         <Border Grid.Row="0" Background="#313744" CornerRadius="4" Margin="0,0,0,8" Padding="8,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
@@ -95,42 +561,8 @@
                     </Border>
                 </Grid>
 
-                <!-- Type filter buttons -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,8,0">
-                    <Button x:Name="FilterAButton"  Content="A"  Width="26" Height="26" Margin="2,0"
-                            Background="#EBCB8B" Foreground="#2E3440"
-                            FontWeight="Bold" FontSize="11" Padding="0"
-                            Click="FilterA_Click" Cursor="Hand"
-                            ToolTip="Toggle: Appearance conflicts"
-                            Style="{StaticResource ConflictPrimaryButton}"/>
-                    <Button x:Name="FilterSButton"  Content="S"  Width="26" Height="26" Margin="2,0"
-                            Background="#D08770" Foreground="#2E3440"
-                            FontWeight="Bold" FontSize="11" Padding="0"
-                            Click="FilterS_Click" Cursor="Hand"
-                            ToolTip="Toggle: Skin conflicts"
-                            Style="{StaticResource ConflictPrimaryButton}"/>
-                    <Button x:Name="FilterOButton"  Content="O"  Width="26" Height="26" Margin="2,0"
-                            Background="#B48EAD" Foreground="#2E3440"
-                            FontWeight="Bold" FontSize="11" Padding="0"
-                            Click="FilterO_Click" Cursor="Hand"
-                            ToolTip="Toggle: Outfit conflicts"
-                            Style="{StaticResource ConflictPrimaryButton}"/>
-                    <Button x:Name="FilterSpButton" Content="Sp" Width="30" Height="26" Margin="2,0"
-                            Background="#4C566A" Foreground="#88C0D0"
-                            FontWeight="Bold" FontSize="10" Padding="0"
-                            Click="FilterSp_Click" Cursor="Hand"
-                            ToolTip="Toggle: Spell conflicts"
-                            Style="{StaticResource ConflictPrimaryButton}"/>
-                    <Button x:Name="FilterPButton"  Content="P"  Width="26" Height="26" Margin="2,0"
-                            Background="#4C566A" Foreground="#88C0D0"
-                            FontWeight="Bold" FontSize="11" Padding="0"
-                            Click="FilterP_Click" Cursor="Hand"
-                            ToolTip="Toggle: Perk conflicts"
-                            Style="{StaticResource ConflictPrimaryButton}"/>
-                </StackPanel>
-
-                <!-- Origin + SPID filters -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                <!-- Origin + SPID + plugin filters -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="FilterBaseButton" Content="Base" Width="46" Height="26" Margin="2,0"
                             Background="#88C0D0" Foreground="#2E3440"
                             FontWeight="Bold" FontSize="10" Padding="0"
@@ -155,507 +587,102 @@
                               Margin="8,0,0,0" VerticalAlignment="Center"
                               Checked="PluginFilter_Changed" Unchecked="PluginFilter_Changed"
                               ToolTip="When checked, hides ESP/ESL plugin appearance overhauls and any conflict that exists only because of them"/>
+                    <CheckBox x:Name="HidePluginOnlyConflictsCheckBox"
+                              Content="Hide Plugin-Only Conflicts"
+                              Style="{StaticResource FilterToggleStyle}"
+                              Margin="8,0,0,0" VerticalAlignment="Center"
+                              Checked="PluginOnlyFilter_Changed" Unchecked="PluginOnlyFilter_Changed"
+                              ToolTip="When checked, hides conflicts where an NPC's appearance is affected by two or more plugins with no SkyPatcher rule involved at all"/>
                 </StackPanel>
-
-                <!-- NPC count -->
-                <TextBlock x:Name="NpcCountText" Grid.Column="3"
-                           FontSize="10" Foreground="#8C9BB5"
-                           VerticalAlignment="Center" Margin="0,0,2,0"/>
             </Grid>
         </Border>
 
-        <!-- Empty / initial state -->
-        <TextBlock x:Name="EmptyText" Grid.Row="1"
-                   Text="Run analysis to populate this view."
-                   FontSize="11" Foreground="#4C566A"
-                   VerticalAlignment="Center" HorizontalAlignment="Center"
-                   Visibility="Visible"/>
+        <!-- Sub-tabs: Appearances / Outfits / Skins / Other (Spell + Perk). Each hosts its own
+             virtualized, filtered NPC list; the filter bar above applies to whichever is active. -->
+        <TabControl Grid.Row="1" Style="{StaticResource InnerTabControl}"
+                    ItemContainerStyle="{StaticResource InnerTabItem}">
 
-        <!-- NPC list (virtualized) -->
-        <ItemsControl x:Name="NpcList" Grid.Row="1"
-                      VirtualizingPanel.IsVirtualizing="True"
-                      VirtualizingPanel.ScrollUnit="Pixel">
-            <ItemsControl.Template>
-                <ControlTemplate TargetType="ItemsControl">
-                    <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto">
-                        <ItemsPresenter/>
-                    </ScrollViewer>
-                </ControlTemplate>
-            </ItemsControl.Template>
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <VirtualizingStackPanel/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Style="{StaticResource ConflictItemContainer}">
-                        <StackPanel>
+            <TabItem x:Name="AppearancesTab" Header="Appearances">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="AppearanceCountText" Grid.Row="0"
+                               FontSize="10" Foreground="#8C9BB5"
+                               HorizontalAlignment="Right" Margin="0,0,2,6"/>
+                    <TextBlock x:Name="AppearanceEmptyText" Grid.Row="1"
+                               Text="Run analysis to populate this view."
+                               FontSize="11" Foreground="#4C566A"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Visibility="Visible"/>
+                    <ItemsControl x:Name="AppearanceList" Grid.Row="1"
+                                  Style="{StaticResource VirtualizedNpcListStyle}"
+                                  ItemTemplate="{StaticResource NpcCardTemplate}"/>
+                </Grid>
+            </TabItem>
 
-                            <!-- Header row (clickable) -->
-                            <Button Tag="{Binding}" Click="ConflictHeader_Click"
-                                    Style="{StaticResource ConflictHeaderButton}">
-                                <Grid Margin="12,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="20"/>
-                                    </Grid.ColumnDefinitions>
+            <TabItem x:Name="OutfitsTab" Header="Outfits">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="OutfitCountText" Grid.Row="0"
+                               FontSize="10" Foreground="#8C9BB5"
+                               HorizontalAlignment="Right" Margin="0,0,2,6"/>
+                    <TextBlock x:Name="OutfitEmptyText" Grid.Row="1"
+                               Text="Run analysis to populate this view."
+                               FontSize="11" Foreground="#4C566A"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Visibility="Visible"/>
+                    <ItemsControl x:Name="OutfitList" Grid.Row="1"
+                                  Style="{StaticResource VirtualizedNpcListStyle}"
+                                  ItemTemplate="{StaticResource NpcCardTemplate}"/>
+                </Grid>
+            </TabItem>
 
-                                    <!-- NPC name + sub-text -->
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding DisplayName}"
-                                                   FontSize="13" FontWeight="SemiBold" Foreground="#ECEFF4"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                            <StackPanel.Style>
-                                                <Style TargetType="StackPanel">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding SubText}" Value="">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Style>
-                                            <TextBlock Text="Editor ID: " FontSize="10" Foreground="#8C9BB5"/>
-                                            <TextBlock Text="{Binding SubText}" FontSize="10" Foreground="#B8C5D5"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                            <StackPanel.Style>
-                                                <Style TargetType="StackPanel">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding FormId}" Value="">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Style>
-                                            <TextBlock Text="Form ID: " FontSize="10" Foreground="#8C9BB5"/>
-                                            <TextBlock Text="{Binding FormId}" FontSize="10" Foreground="#B8C5D5"/>
-                                        </StackPanel>
-                                    </StackPanel>
+            <TabItem x:Name="SkinsTab" Header="Skins">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="SkinCountText" Grid.Row="0"
+                               FontSize="10" Foreground="#8C9BB5"
+                               HorizontalAlignment="Right" Margin="0,0,2,6"/>
+                    <TextBlock x:Name="SkinEmptyText" Grid.Row="1"
+                               Text="Run analysis to populate this view."
+                               FontSize="11" Foreground="#4C566A"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Visibility="Visible"/>
+                    <ItemsControl x:Name="SkinList" Grid.Row="1"
+                                  Style="{StaticResource VirtualizedNpcListStyle}"
+                                  ItemTemplate="{StaticResource NpcCardTemplate}"/>
+                </Grid>
+            </TabItem>
 
-                                    <!-- Type badges A / S / O / Sp / P -->
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                VerticalAlignment="Center" Margin="10,0">
-                                        <Border Background="#EBCB8B" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasAppearance}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Text="A" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
-                                        </Border>
-                                        <Border Background="#D08770" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasSkin}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Text="S" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
-                                        </Border>
-                                        <Border Background="#B48EAD" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasOutfit}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Text="O" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
-                                        </Border>
-                                        <Border Background="#A3BE8C" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasSpell}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Text="Sp" FontSize="9" FontWeight="Bold" Foreground="#2E3440"/>
-                                        </Border>
-                                        <Border Background="#BF616A" CornerRadius="3" Padding="5,2" Margin="2,0" VerticalAlignment="Center">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasPerk}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Text="P" FontSize="9" FontWeight="Bold" Foreground="#ECEFF4"/>
-                                        </Border>
-                                    </StackPanel>
+            <TabItem x:Name="OtherTab" Header="Other">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="OtherCountText" Grid.Row="0"
+                               FontSize="10" Foreground="#8C9BB5"
+                               HorizontalAlignment="Right" Margin="0,0,2,6"/>
+                    <TextBlock x:Name="OtherEmptyText" Grid.Row="1"
+                               Text="Run analysis to populate this view."
+                               FontSize="11" Foreground="#4C566A"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Visibility="Visible"/>
+                    <ItemsControl x:Name="OtherList" Grid.Row="1"
+                                  Style="{StaticResource VirtualizedNpcListStyle}"
+                                  ItemTemplate="{StaticResource NpcCardTemplate}"/>
+                </Grid>
+            </TabItem>
 
-                                    <!-- Expand/collapse chevron -->
-                                    <TextBlock Grid.Column="2"
-                                               FontSize="9" Foreground="#4C566A"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="▶"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                        <Setter Property="Text" Value="▼"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Grid>
-                            </Button>
-
-                            <!-- Accordion panel -->
-                            <Border Style="{StaticResource ConflictAccordionPanel}">
-
-                                <!-- Groups (filtered by active type filters) -->
-                                <ItemsControl ItemsSource="{Binding FilteredGroups}" Margin="12,4,12,12">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Margin="0,8,0,0">
-
-                                                <!-- Group type header — full-width coloured strip -->
-                                                <Border Background="{Binding BadgeBrush}" CornerRadius="3"
-                                                        Padding="10,6" Margin="0,0,0,6">
-                                                    <TextBlock Text="{Binding Label}"
-                                                               FontSize="11" FontWeight="Bold" Foreground="#2E3440"/>
-                                                </Border>
-
-                                                <!-- Source cards -->
-                                                <ItemsControl ItemsSource="{Binding Sources}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border>
-                                                                <Border.Style>
-                                                                    <Style TargetType="Border" BasedOn="{StaticResource ConflictSourceCard}">
-                                                                        <Style.Triggers>
-                                                                            <!-- Losing source after "Make Winner": grey it out (still visible). -->
-                                                                            <DataTrigger Binding="{Binding IsInactive}" Value="True">
-                                                                                <Setter Property="Opacity" Value="0.45"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Border.Style>
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="Auto"/>
-                                                                    </Grid.ColumnDefinitions>
-
-                                                                    <StackPanel Grid.Column="0">
-
-                                                                    <!-- Row 1: filename + badges -->
-                                                                    <Grid>
-                                                                        <Grid.ColumnDefinitions>
-                                                                            <ColumnDefinition Width="*"/>
-                                                                            <ColumnDefinition Width="Auto"/>
-                                                                        </Grid.ColumnDefinitions>
-                                                                        <TextBlock Grid.Column="0"
-                                                                                   Text="{Binding FileName}"
-                                                                                   FontSize="12" FontWeight="SemiBold"
-                                                                                   Foreground="#ECEFF4"
-                                                                                   TextTrimming="CharacterEllipsis">
-                                                                            <TextBlock.Style>
-                                                                                <Style TargetType="TextBlock">
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding IsInactive}" Value="True">
-                                                                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </TextBlock.Style>
-                                                                        </TextBlock>
-                                                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                                            <!-- Load position -->
-                                                                            <Border Background="#4C566A" CornerRadius="3"
-                                                                                    Padding="6,2" Margin="4,0,0,0"
-                                                                                    VerticalAlignment="Center">
-                                                                                <TextBlock FontSize="9" Foreground="#88C0D0">
-                                                                                    <Run Text="{Binding LoadPosition}"/>
-                                                                                    <Run Text=" of "/>
-                                                                                    <Run Text="{Binding TotalSources}"/>
-                                                                                </TextBlock>
-                                                                            </Border>
-                                                                            <!-- SPID chance badge ("Chance NN%"; same as the BOS tab) -->
-                                                                            <Border Background="#81A1C1" CornerRadius="3"
-                                                                                    Padding="6,2" Margin="4,0,0,0"
-                                                                                    VerticalAlignment="Center">
-                                                                                <Border.Style>
-                                                                                    <Style TargetType="Border">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding HasSpidChance}" Value="True">
-                                                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                                            </DataTrigger>
-                                                                                        </Style.Triggers>
-                                                                                    </Style>
-                                                                                </Border.Style>
-                                                                                <TextBlock Text="{Binding SpidChanceBadgeText}"
-                                                                                           FontSize="9" FontWeight="Bold"
-                                                                                           Foreground="#ECEFF4"/>
-                                                                            </Border>
-                                                                            <!-- Winner badge (hidden for additive rule types) -->
-                                                                            <Border Background="#A3BE8C" CornerRadius="3"
-                                                                                    Padding="6,2" Margin="4,0,0,0"
-                                                                                    VerticalAlignment="Center">
-                                                                                <Border.Style>
-                                                                                    <Style TargetType="Border">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding IsWinner}" Value="True">
-                                                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                                            </DataTrigger>
-                                                                                            <DataTrigger Binding="{Binding IsAdditive}" Value="True">
-                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                            </DataTrigger>
-                                                                                        </Style.Triggers>
-                                                                                    </Style>
-                                                                                </Border.Style>
-                                                                                <TextBlock Text="WINNER" FontSize="9"
-                                                                                           FontWeight="Bold" Foreground="#2E3440"/>
-                                                                            </Border>
-                                                                            <!-- Conflict type badge (always last): Skypatcher / SPID / Plugin -->
-                                                                            <Border Background="#B48EAD" CornerRadius="3"
-                                                                                    Padding="6,2" Margin="4,0,0,0"
-                                                                                    VerticalAlignment="Center">
-                                                                                <TextBlock Text="{Binding TypeBadgeText}"
-                                                                                           FontSize="9" FontWeight="Bold"
-                                                                                           Foreground="#2E3440"/>
-                                                                            </Border>
-                                                                        </StackPanel>
-                                                                    </Grid>
-
-                                                                    <!-- Row 2: rule value (hidden for plugin overhaul sources) -->
-                                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                                        <StackPanel.Style>
-                                                                            <Style TargetType="StackPanel">
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding ShowRuleValue}" Value="False">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </StackPanel.Style>
-                                                                        <TextBlock Text="{Binding RuleValueLabel}"
-                                                                                   FontSize="10" Foreground="#8C9BB5"
-                                                                                   Margin="0,0,5,0"/>
-                                                                        <TextBlock Text="{Binding ResolvedRuleDisplay}"
-                                                                                   FontSize="10" Foreground="#A0AFBE"
-                                                                                   TextTrimming="CharacterEllipsis"/>
-                                                                    </StackPanel>
-
-                                                                    <!-- Row 2b: source plugin (Appearance only) -->
-                                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                                        <StackPanel.Style>
-                                                                            <Style TargetType="StackPanel">
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding RulePlugin}" Value="">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </StackPanel.Style>
-                                                                        <TextBlock Text="Plugin: "
-                                                                                   FontSize="10" Foreground="#8C9BB5"
-                                                                                   Margin="0,0,5,0"/>
-                                                                        <TextBlock Text="{Binding RulePlugin}"
-                                                                                   FontSize="10" Foreground="#A0AFBE"
-                                                                                   TextTrimming="CharacterEllipsis"
-                                                                                   Background="Transparent"
-                                                                                   Cursor="Hand"
-                                                                                   MouseLeftButtonUp="PluginName_Click"
-                                                                                   ToolTip="Click to copy the plugin name"/>
-                                                                    </StackPanel>
-
-                                                                    <!-- Row 3: code context (hidden for plugin overhaul sources — no editable line) -->
-                                                                    <local:CodeContextBlock
-                                                                        HasPrecedingLine="{Binding HasPrecedingLine}"
-                                                                        PrecedingLineNumber="{Binding PrecedingLineNumber}"
-                                                                        PrecedingLine="{Binding PrecedingLine}"
-                                                                        LineNumber="{Binding LineNumber}"
-                                                                        LineText="{Binding ConflictLineText}"
-                                                                        HasFollowingLine="{Binding HasFollowingLine}"
-                                                                        FollowingLineNumber="{Binding FollowingLineNumber}"
-                                                                        FollowingLine="{Binding FollowingLine}"
-                                                                        Margin="0,6,0,0">
-                                                                        <local:CodeContextBlock.Style>
-                                                                            <Style TargetType="local:CodeContextBlock">
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding ShowCodeContext}" Value="False">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </local:CodeContextBlock.Style>
-                                                                    </local:CodeContextBlock>
-
-                                                                    <!-- Row 4: file path (relative to Skyrim root; hidden for plugin sources) -->
-                                                                    <TextBlock Text="{Binding DisplayPath}"
-                                                                               FontSize="9" Foreground="#8C99A8"
-                                                                               Margin="0,4,0,0"
-                                                                               TextTrimming="CharacterEllipsis">
-                                                                        <TextBlock.Style>
-                                                                            <Style TargetType="TextBlock">
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding IsPlugin}" Value="True">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </TextBlock.Style>
-                                                                    </TextBlock>
-
-                                                                    <!-- Row 5: action buttons (hidden for plugin overhaul sources — read-only) -->
-                                                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                                                        <StackPanel.Style>
-                                                                            <Style TargetType="StackPanel">
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding ShowActions}" Value="False">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </StackPanel.Style>
-                                                                        <!-- Make Winner (winner-takes-all types, unless all probabilistic) -->
-                                                                        <Button Content="Make Winner"
-                                                                                Tag="{Binding}"
-                                                                                Click="MakeWinner_Click">
-                                                                            <Button.Style>
-                                                                                <Style TargetType="Button" BasedOn="{StaticResource ConflictPrimaryButton}">
-                                                                                    <Setter Property="Margin" Value="0,0,6,0"/>
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding IsAdditive}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                        <DataTrigger Binding="{Binding IsProbabilistic}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                        <DataTrigger Binding="{Binding CanMakeWinner}" Value="False">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                        <DataTrigger Binding="{Binding IsInactive}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </Button.Style>
-                                                                        </Button>
-                                                                        <!-- Remove: comments out (or breaks out of a multi-NPC rule) just this
-                                                                             source. Shown for every editable config source; plugin sources have
-                                                                             no action buttons (the whole panel is hidden via ShowActions). Hidden
-                                                                             once the source has been resolved (greyed out) by "Make Winner". -->
-                                                                        <Button Content="Remove"
-                                                                                Tag="{Binding}"
-                                                                                Click="RemoveSource_Click">
-                                                                            <Button.Style>
-                                                                                <Style TargetType="Button" BasedOn="{StaticResource ConflictDangerButton}">
-                                                                                    <Setter Property="Margin" Value="0,0,6,0"/>
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding IsInactive}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                        <!-- Plugins have no editable file to remove. -->
-                                                                                        <DataTrigger Binding="{Binding IsPlugin}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </Button.Style>
-                                                                        </Button>
-                                                                        <!-- Open File: config sources only (a plugin source has no config file to open). -->
-                                                                        <Button Content="Open File"
-                                                                                Tag="{Binding}"
-                                                                                Click="OpenFile_Click">
-                                                                            <Button.Style>
-                                                                                <Style TargetType="Button" BasedOn="{StaticResource ConflictAccentButton}">
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding IsPlugin}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </Button.Style>
-                                                                        </Button>
-                                                                    </StackPanel>
-
-                                                                    </StackPanel>
-
-                                                                    <!-- Per-source portrait (Appearance sources only). Fixed width;
-                                                                         height tracks the card content so card height is unchanged. -->
-                                                                    <Border Grid.Column="1" Width="120" Margin="10,0,0,0"
-                                                                            Background="#272C38" CornerRadius="4"
-                                                                            VerticalAlignment="Stretch">
-                                                                        <Border.Style>
-                                                                            <Style TargetType="Border">
-                                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding ShowPortrait}" Value="True">
-                                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </Border.Style>
-                                                                        <Grid>
-                                                                            <!-- Placeholder shown when this source has no portrait -->
-                                                                            <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                                                                                <StackPanel.Style>
-                                                                                    <Style TargetType="StackPanel">
-                                                                                        <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding HasPortrait}" Value="True">
-                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                            </DataTrigger>
-                                                                                        </Style.Triggers>
-                                                                                    </Style>
-                                                                                </StackPanel.Style>
-                                                                                <Viewbox Width="40" Height="40" HorizontalAlignment="Center">
-                                                                                    <Path Fill="#4C566A"
-                                                                                          Data="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                                                                </Viewbox>
-                                                                                <TextBlock Text="No portrait" FontSize="9" Foreground="#4C566A"
-                                                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                                                            </StackPanel>
-                                                                            <!-- Actual portrait (drawn over the placeholder when set) -->
-                                                                            <Image Source="{Binding PortraitPath}"
-                                                                                   Stretch="Uniform" StretchDirection="DownOnly"
-                                                                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                                        </Grid>
-                                                                    </Border>
-
-                                                                </Grid>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-
-                            </Border>
-
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        </TabControl>
 
     </Grid>
 </local:ConflictViewBase>

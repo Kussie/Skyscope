@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:SkyScope.UI">
 
     <!-- Green action button (Make Winner, primary actions) -->
     <Style x:Key="ConflictPrimaryButton" TargetType="Button">
@@ -168,5 +169,85 @@
     <SolidColorBrush x:Key="DiffRemovedForeground" Color="#BF6060"/>
     <SolidColorBrush x:Key="DiffAddedBackground"   Color="#1E3020"/>
     <SolidColorBrush x:Key="DiffAddedForeground"   Color="#7EC077"/>
+
+    <!-- Inner (nested) sub-tab styling — used for the NPCs tab's Appearances/Outfits/Skins/Other
+         sub-tabs. Modeled on MainWindow's NordTabControl/NordTabItem but sized for a nested control. -->
+    <Style x:Key="InnerTabControl" TargetType="TabControl">
+        <Setter Property="Background" Value="#2E3440"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+
+    <Style x:Key="InnerTabItem" TargetType="TabItem">
+        <Setter Property="Background" Value="#2E3440"/>
+        <Setter Property="Foreground" Value="#8C9BB5"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="14,7,14,8"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Grid>
+                        <Border x:Name="Tab" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}" Cursor="Hand">
+                            <ContentPresenter ContentSource="Header"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <Rectangle x:Name="Indicator" Height="2"
+                                   VerticalAlignment="Bottom" Fill="#88C0D0"
+                                   Visibility="Collapsed"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="#3E4757"/>
+                            <Setter TargetName="Tab" Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Tab" Property="Background" Value="#3B4252"/>
+                            <Setter Property="Foreground" Value="#ECEFF4"/>
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                                <Condition Property="IsSelected" Value="False"/>
+                                <Condition Property="IsEnabled" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.Setters>
+                                <Setter TargetName="Tab" Property="Background" Value="#353D4C"/>
+                                <Setter Property="Foreground" Value="#B0BFCF"/>
+                            </MultiTrigger.Setters>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Shared virtualized list host for the NPCs tab sub-tabs: scroll/virtualization template so
+         each sub-tab's ItemsControl only needs Style="{StaticResource VirtualizedNpcListStyle}", an
+         ItemTemplate (the card, defined per-file since it wires Click handlers — a plain
+         ResourceDictionary has no x:Class to bind them to), and an ItemsSource. -->
+    <Style x:Key="VirtualizedNpcListStyle" TargetType="ItemsControl">
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+        <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ItemsControl">
+                    <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter/>
+                    </ScrollViewer>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel/>
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
 </ResourceDictionary>

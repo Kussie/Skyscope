@@ -481,7 +481,6 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <!-- Appearance -->
@@ -508,11 +507,6 @@
                                     <Border Grid.Row="4" Grid.Column="0" Background="#BF616A" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Row="4" Grid.Column="1" Text="Perks" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="PerkSummaryText" Grid.Row="4" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
-
-                                    <!-- Base Object Swapper -->
-                                    <Border Grid.Row="5" Grid.Column="0" Background="#88C0D0" CornerRadius="3" Width="16" Height="16" Margin="0,4,8,4" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Row="5" Grid.Column="1" Text="Swapped Objects" FontSize="11" Foreground="#88C0D0" Margin="0,4" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="BosSummaryText" Grid.Row="5" Grid.Column="2" Text="—" FontSize="11" Foreground="#ECEFF4" Margin="0,4" VerticalAlignment="Center"/>
                                 </Grid>
 
                                 <Border BorderBrush="#3B4252" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
@@ -534,10 +528,10 @@
                                     <Run FontWeight="Bold" Foreground="#ECEFF4">Spells / Perks</Run>
                                     <Run> — additive rules from SkyPatcher (spellsToAdd / perksToAdd) and SPID (Spell= / Perk=). All matching rules apply, so multiple mods targeting the same NPC may add duplicate or conflicting distributions, but may not be true conflicts really.</Run>
                                 </TextBlock>
-                                <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
+                                <!--<TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#88C0D0" TextWrapping="Wrap" LineHeight="18">
                                     <Run FontWeight="Bold" Foreground="#ECEFF4">Base Object Swapper</Run>
                                     <Run> — winner-takes-all rules from *_SWAP.ini files. Files are loaded in case-sensitive alphabetical order; the last filename alphabetically wins. Use the BOS Conflicts tab to review sources.</Run>
-                                </TextBlock>
+                                </TextBlock>-->
                             </StackPanel>
                         </Border>
 

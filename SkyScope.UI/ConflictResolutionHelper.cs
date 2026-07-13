@@ -77,6 +77,15 @@ public static class ConflictResolutionHelper
         return result;
     }
 
+    public static List<ConflictEntry> FilterPluginOnlyConflicts(List<ConflictEntry> entries, bool hidePluginOnly)
+    {
+        if (!hidePluginOnly) return entries;
+
+        return entries
+            .Where(entry => !entry.Sources.All(s => s.SourceTool == "Plugin"))
+            .ToList();
+    }
+
     // Comments the whole rule line out. Returns how many lines were inserted (1, or 0 if it was
     // already commented) so callers can keep other sources' captured line numbers in sync and avoid
     // re-running the analysis between edits.

@@ -27,7 +27,11 @@ public partial class NpcConflictView : ConflictViewBase
     private const string ColorBtnActiveFg = "#2E3440";
     private const string ColorBtnInactFg  = "#88C0D0";
 
-    private List<NpcConflictViewModel> _allNpcs = new();
+    private List<NpcConflictViewModel> _allAppearanceNpcs = new();
+    private List<NpcConflictViewModel> _allOutfitNpcs     = new();
+    private List<NpcConflictViewModel> _allSkinNpcs       = new();
+    private List<NpcConflictViewModel> _allOtherNpcs      = new();
+
     private ConflictSummary?      _lastSummary;
     private ModReferenceLibrary?  _library;
 
@@ -43,20 +47,21 @@ public partial class NpcConflictView : ConflictViewBase
     // configured thumbnail folders so each source can resolve its portrait by O(1) lookup.
     private Dictionary<string, Dictionary<string, string>> _portraitIndex = new(StringComparer.OrdinalIgnoreCase);
 
-    private bool _filterA  = true;
-    private bool _filterS  = true;
-    private bool _filterO  = true;
-    private bool _filterSp = false;
-    private bool _filterP  = false;
     private bool _filterVanilla = true;
     private bool _filterModded  = true;
 
-    private readonly ObservableCollection<NpcConflictViewModel> _npcListSource = new();
+    private readonly ObservableCollection<NpcConflictViewModel> _appearanceListSource = new();
+    private readonly ObservableCollection<NpcConflictViewModel> _outfitListSource     = new();
+    private readonly ObservableCollection<NpcConflictViewModel> _skinListSource       = new();
+    private readonly ObservableCollection<NpcConflictViewModel> _otherListSource      = new();
 
     public NpcConflictView()
     {
         InitializeComponent();
-        NpcList.ItemsSource = _npcListSource;
+        AppearanceList.ItemsSource = _appearanceListSource;
+        OutfitList.ItemsSource     = _outfitListSource;
+        SkinList.ItemsSource       = _skinListSource;
+        OtherList.ItemsSource      = _otherListSource;
     }
 
     // Raised after a plugin name is copied to the clipboard so the host window can show a toast.
@@ -74,30 +79,36 @@ public partial class NpcConflictView : ConflictViewBase
         if (library != null) _library = library;
         _lastSummary = summary;
 
-        foreach (var vm in _allNpcs)
+        foreach (var vm in AllNpcVms())
             vm.IsExpanded = false;
 
-        var showLowChance = ShowLowChanceSpidCheckBox.IsChecked == true;
-        var hidePlugins   = HidePluginConflictsCheckBox.IsChecked == true;
-        var dict = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
+        var showLowChance  = ShowLowChanceSpidCheckBox.IsChecked == true;
+        var hidePlugins    = HidePluginConflictsCheckBox.IsChecked == true;
+        var hidePluginOnly = HidePluginOnlyConflictsCheckBox.IsChecked == true;
 
         _portraitIndex = BuildPortraitIndex();
 
+        var appearanceDict = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
+        var outfitDict      = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
+        var skinDict        = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
+        var otherDict       = new Dictionary<string, NpcConflictViewModel>(StringComparer.OrdinalIgnoreCase);
+
         var appearance = ConflictResolutionHelper.FilterLowChanceSpid(summary.AppearanceConflicts, showLowChance);
         appearance = ConflictResolutionHelper.FilterPluginSources(appearance, hidePlugins);
-        AddGroups(dict, appearance, RuleType.Appearance, "Appearance", HexBrush(ColorAppearance), _library, _portraitIndex);
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts,          showLowChance), RuleType.Skin,          "Skin",           HexBrush(ColorSkin),       _library, _portraitIndex);
-        AddGroups(dict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush(ColorOutfit),     _library, _portraitIndex);
-        AddGroups(dict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush(ColorSpell), _library, _portraitIndex);
-        AddGroups(dict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush(ColorPerk),  _library, _portraitIndex);
+        appearance = ConflictResolutionHelper.FilterPluginOnlyConflicts(appearance, hidePluginOnly);
+        AddGroups(appearanceDict, appearance, RuleType.Appearance, "Appearance", HexBrush(ColorAppearance), _library, _portraitIndex);
+        AddGroups(outfitDict, ConflictResolutionHelper.FilterLowChanceSpid(summary.OutfitDefaultConflicts, showLowChance), RuleType.OutfitDefault, "Default Outfit", HexBrush(ColorOutfit), _library, _portraitIndex);
+        AddGroups(skinDict, ConflictResolutionHelper.FilterLowChanceSpid(summary.SkinConflicts, showLowChance), RuleType.Skin, "Skin", HexBrush(ColorSkin), _library, _portraitIndex);
+        AddGroups(otherDict, summary.SpellConflicts, RuleType.Spell, "Spell", HexBrush(ColorSpell), _library, _portraitIndex);
+        AddGroups(otherDict, summary.PerkConflicts,  RuleType.Perk,  "Perk",  HexBrush(ColorPerk),  _library, _portraitIndex);
 
-        _allNpcs = dict.Values
-            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        _allAppearanceNpcs = SortAndOwn(appearanceDict);
+        _allOutfitNpcs     = SortAndOwn(outfitDict);
+        _allSkinNpcs       = SortAndOwn(skinDict);
+        _allOtherNpcs      = SortAndOwn(otherDict);
 
-        AppearancePlugins = _allNpcs
+        AppearancePlugins = _allAppearanceNpcs
             .SelectMany(vm => vm.Groups)
-            .Where(g => g.RuleType == RuleType.Appearance)
             .SelectMany(g => g.Sources)
             .Select(s => s.RulePlugin)
             .Where(p => !string.IsNullOrEmpty(p))
@@ -108,13 +119,49 @@ public partial class NpcConflictView : ConflictViewBase
         ApplyFilter();
     }
 
+    // Sorts a type-specific dict's values and stamps each VM's OwnerList to point at the resulting
+    // list, so RemoveSource_Click can later remove an emptied-out NPC from the correct sub-tab list.
+    private static List<NpcConflictViewModel> SortAndOwn(Dictionary<string, NpcConflictViewModel> dict)
+    {
+        var list = dict.Values
+            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (var vm in list) vm.OwnerList = list;
+        return list;
+    }
+
+    // All NPC VM instances across the four sub-tab lists combined.
+    private IEnumerable<NpcConflictViewModel> AllNpcVms() =>
+        _allAppearanceNpcs.Concat(_allOutfitNpcs).Concat(_allSkinNpcs).Concat(_allOtherNpcs);
+
+    // All source VMs across the four sub-tab lists combined — used by ApplyEditShift, since one
+    // config line can produce sources of different rule types (e.g. copyVisualStyle + skin on the
+    // same line) that now live in different sub-tab lists but must still be kept in sync together.
+    private IEnumerable<NpcTabSourceViewModel> AllSources() =>
+        AllNpcVms().SelectMany(vm => vm.Groups).SelectMany(g => g.Sources);
+
+    private bool HasAnyNpcs() =>
+        _allAppearanceNpcs.Count > 0 || _allOutfitNpcs.Count > 0 ||
+        _allSkinNpcs.Count > 0       || _allOtherNpcs.Count > 0;
+
     public void Clear()
     {
-        _allNpcs.Clear();
-        _npcListSource.Clear();
-        NpcCountText.Text    = "";
-        EmptyText.Text       = "Run analysis to populate this view.";
-        EmptyText.Visibility = Visibility.Visible;
+        _allAppearanceNpcs.Clear(); _appearanceListSource.Clear();
+        _allOutfitNpcs.Clear();     _outfitListSource.Clear();
+        _allSkinNpcs.Clear();       _skinListSource.Clear();
+        _allOtherNpcs.Clear();      _otherListSource.Clear();
+
+        ResetEmptyState(AppearanceCountText, AppearanceEmptyText);
+        ResetEmptyState(OutfitCountText,     OutfitEmptyText);
+        ResetEmptyState(SkinCountText,       SkinEmptyText);
+        ResetEmptyState(OtherCountText,      OtherEmptyText);
+    }
+
+    private static void ResetEmptyState(TextBlock countText, TextBlock emptyText)
+    {
+        countText.Text       = "";
+        emptyText.Text       = "Run analysis to populate this view.";
+        emptyText.Visibility = Visibility.Visible;
     }
 
     private static void AddGroups(
@@ -450,24 +497,30 @@ public partial class NpcConflictView : ConflictViewBase
         var search       = SearchBox.Text.Trim();
         var pluginFilter = PluginFilterBox.Text.Trim();
 
-        foreach (var vm in _allNpcs)
-        {
-            vm.FilteredGroups = vm.Groups.Where(g =>
-                (g.RuleType == RuleType.Appearance    && _filterA)  ||
-                (g.RuleType == RuleType.Skin          && _filterS)  ||
-                (g.RuleType == RuleType.OutfitDefault && _filterO)  ||
-                (g.RuleType == RuleType.Spell         && _filterSp) ||
-                (g.RuleType == RuleType.Perk          && _filterP)
-            ).ToList();
-        }
+        ApplyFilterToList(_allAppearanceNpcs, _appearanceListSource, AppearanceCountText, AppearanceEmptyText, search, pluginFilter);
+        ApplyFilterToList(_allOutfitNpcs,     _outfitListSource,     OutfitCountText,     OutfitEmptyText,     search, pluginFilter);
+        ApplyFilterToList(_allSkinNpcs,       _skinListSource,       SkinCountText,       SkinEmptyText,       search, pluginFilter);
+        ApplyFilterToList(_allOtherNpcs,      _otherListSource,      OtherCountText,      OtherEmptyText,      search, pluginFilter);
+    }
 
-        var visible = _allNpcs.Where(vm =>
+    private void ApplyFilterToList(
+        List<NpcConflictViewModel> allNpcs,
+        ObservableCollection<NpcConflictViewModel> listSource,
+        TextBlock countText, TextBlock emptyText,
+        string search, string pluginFilter)
+    {
+        // No more per-type group filtering (that was the old A/S/O/Sp/P toggle) — each sub-tab's
+        // list only ever contains groups relevant to it (Other combines Spell+Perk), so every group
+        // on a VM is always shown.
+        foreach (var vm in allNpcs)
+            vm.FilteredGroups = vm.Groups.ToList();
+
+        var visible = allNpcs.Where(vm =>
         {
-            if (vm.FilteredGroups.Count == 0) return false;
             if (vm.IsVanilla  && !_filterVanilla) return false;
             if (!vm.IsVanilla && !_filterModded)  return false;
-            // Plugin filter: hide NPCs whose conflicts don't involve the named plugin at all.
-            // Matching NPCs keep ALL their conflicts (this doesn't hide the non-matching ones).
+            // Plugin filter: hide NPCs whose conflicts in THIS sub-tab don't involve the named
+            // plugin. Matching NPCs keep all their groups in this sub-tab (doesn't hide non-matches).
             if (!string.IsNullOrEmpty(pluginFilter) &&
                 !vm.InvolvedPlugins.Any(p => p.Contains(pluginFilter, StringComparison.OrdinalIgnoreCase)))
                 return false;
@@ -476,45 +529,20 @@ public partial class NpcConflictView : ConflictViewBase
                 || vm.SubText.Contains(search, StringComparison.OrdinalIgnoreCase);
         }).ToList();
 
-        SyncList(_npcListSource, visible, vm => vm.IsExpanded = false);
+        SyncList(listSource, visible, vm => vm.IsExpanded = false);
 
-        NpcCountText.Text = $"{visible.Count} NPC{(visible.Count == 1 ? "" : "s")}";
+        countText.Text = $"{visible.Count} NPC{(visible.Count == 1 ? "" : "s")}";
 
-        UpdateEmptyState(EmptyText, _allNpcs.Count > 0, visible.Count,
+        UpdateEmptyState(emptyText, allNpcs.Count > 0, visible.Count,
             "Run analysis to populate this view.",
             "No NPCs match the current filter.");
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
-        StartSearchDebounce(ApplyFilter, () => _allNpcs.Count > 0);
+        StartSearchDebounce(ApplyFilter, HasAnyNpcs);
 
     private void PluginFilterBox_TextChanged(object sender, TextChangedEventArgs e) =>
-        StartSearchDebounce(ApplyFilter, () => _allNpcs.Count > 0);
-
-    private void FilterA_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterA,  FilterAButton,  ColorAppearance);
-    private void FilterS_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterS,  FilterSButton,  ColorSkin);
-    private void FilterO_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterO,  FilterOButton,  ColorOutfit);
-    private void FilterSp_Click(object sender, RoutedEventArgs e) => ToggleFilter(ref _filterSp, FilterSpButton, ColorSpell);
-    private void FilterP_Click(object sender, RoutedEventArgs e)  => ToggleFilter(ref _filterP,  FilterPButton,  ColorPerk);
-
-    private void ToggleFilter(ref bool flag, Button btn, string activeHex)
-    {
-        flag = !flag;
-        UpdateFilterBtn(btn, flag, activeHex);
-        ApplyFilter();
-    }
-
-    private void SpidFilter_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_lastSummary is null) return;
-        Populate(_lastSummary);
-    }
-
-    private void PluginFilter_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_lastSummary is null) return;
-        Populate(_lastSummary);
-    }
+        StartSearchDebounce(ApplyFilter, HasAnyNpcs);
 
     private void FilterBase_Click(object sender, RoutedEventArgs e)
     {
@@ -534,6 +562,24 @@ public partial class NpcConflictView : ConflictViewBase
     {
         btn.Background = active ? HexBrush(activeHex)                          : HexBrush(ColorBtnInactive);
         btn.Foreground = active ? HexBrush(activeFgHex ?? ColorBtnActiveFg)    : HexBrush(ColorBtnInactFg);
+    }
+
+    private void SpidFilter_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_lastSummary is null) return;
+        Populate(_lastSummary);
+    }
+
+    private void PluginFilter_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_lastSummary is null) return;
+        Populate(_lastSummary);
+    }
+
+    private void PluginOnlyFilter_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_lastSummary is null) return;
+        Populate(_lastSummary);
     }
 
     private void MakeWinner_Click(object sender, RoutedEventArgs e)
@@ -643,7 +689,7 @@ public partial class NpcConflictView : ConflictViewBase
             {
                 vm.Groups.Remove(group);
                 if (vm.Groups.Count == 0)
-                    _allNpcs.Remove(vm);
+                    vm.OwnerList.Remove(vm);
                 else
                     RefreshNpcTypeFlags(vm);
                 ApplyFilter();
@@ -656,17 +702,11 @@ public partial class NpcConflictView : ConflictViewBase
         }
     }
 
-    // After an edit at `atLine` in `filePath`, keep the other in-memory sources consistent so the
-    // next edit in the same file works WITHOUT re-running the analysis:
-    //   • sources on later lines of the same file shift down by the number of inserted lines;
-    //   • when a shared multi-NPC SPID rule was rewritten (one NPC split out but the rule survives),
-    //     the other NPCs still on that line are re-pointed to the rewritten line and given its new
-    //     text (so their captured line/content stay valid).
     private void ApplyEditShift(NpcTabSourceViewModel edited, string filePath, int atLine, EditResult result)
     {
         if (result.LinesInserted == 0) return;
 
-        foreach (var s in _allNpcs.SelectMany(vm => vm.Groups).SelectMany(g => g.Sources))
+        foreach (var s in AllSources())
         {
             if (s.SourceTool == "Plugin"
                 || !string.Equals(s.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
@@ -676,11 +716,11 @@ public partial class NpcConflictView : ConflictViewBase
             {
                 s.LineNumber += result.LinesInserted;
             }
-            else if (result.RewrittenLine is { } rewritten
-                     && s.LineNumber == atLine && !ReferenceEquals(s, edited))
+            else if (s.LineNumber == atLine && !ReferenceEquals(s, edited))
             {
-                s.LineNumber       = atLine + result.LinesInserted;
-                s.ConflictLineText = rewritten;
+                s.LineNumber = atLine + result.LinesInserted;
+                if (result.RewrittenLine is { } rewritten)
+                    s.ConflictLineText = rewritten;
             }
         }
     }
@@ -727,6 +767,7 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
     // Distinct plugin names referenced by any of this NPC's conflict sources (copies-from /
     // outfit / skin / overhaul plugins) — used by the "Filter by plugin" search.
     public HashSet<string> InvolvedPlugins { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<NpcConflictViewModel> OwnerList { get; set; } = new();
 
     public ObservableCollection<NpcConflictGroup> Groups { get; } = new();
 
