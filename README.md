@@ -35,6 +35,12 @@ Once results are in, hover any row for a quick summary or double-click to open t
 
 **MO2 is a bit different.** MO2's virtual filesystem only exists while something is running through MO2, so if you launch SkyScope normally it won't see any of your mod files. The easiest fix is to add SkyScope as an executable inside MO2 — go to Tools → Executables, click Add from file, and point it at `SkyScope.exe`. Launch it from the MO2 toolbar and the VFS kicks in automatically.
 
+By default, when SkyScope fixes a conflict it writes straight to whichever file currently provides that rule — under MO2 that means it writes through the virtual filesystem into whichever mod currently owns the file, permanently changing that mod. If you'd rather keep your installed mods untouched, check **"Redirect edits to an output folder"** on the Skyrim Config tab and point it at a folder you control. The first time SkyScope edits a file it copies it into that folder (preserving the `Data`-relative path) and edits the copy there instead; later edits to the same file reuse that copy.
+
+The folder itself isn't created for you — set it up first as an actual mod your manager will deploy:
+- **MO2**: create a new, empty mod folder under your instance's `mods\` (e.g. `mods\SkyScope Output`) and point the setting at it. Make sure that mod is enabled and near the top of your load order so it actually overrides the original.
+- **Vortex**: create a folder in your staging area and install/enable it as a mod the same way, then point the setting at it.
+
 ---
 
 ### Screenshots

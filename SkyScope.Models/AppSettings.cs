@@ -21,4 +21,12 @@ public class AppSettings
         "Unofficial Skyrim Special Edition Patch.esp",
         "Unofficial Skyrim Creation Club Content Patch.esl",
     };
+
+    // When true, edits are redirected into EditOutputDirectory instead of writing through to
+    // whichever mod/deployment currently provides the file.
+    public bool RedirectEditsEnabled { get; set; } = false;
+
+    // Folder edited copies are written into, preserving their Data-relative path (e.g. a mod
+    // folder you created under MO2's mods\, or a folder in a Vortex staging area).
+    public string EditOutputDirectory { get; set; } = "";
 }

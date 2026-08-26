@@ -10,7 +10,8 @@ namespace SkyScope.Core;
 
 public class BosConfigParser
 {
-    public (List<BosSwapRule> Rules, int FilesScanned, List<string> Errors) LoadSwapRulesFromDirectory(string dataPath)
+    public (List<BosSwapRule> Rules, int FilesScanned, List<string> Errors) LoadSwapRulesFromDirectory(
+        string dataPath, EditOutputOptions outputOptions = default)
     {
         if (!Directory.Exists(dataPath))
             return (new(), 0, []);
@@ -21,7 +22,7 @@ public class BosConfigParser
 
         foreach (var filePath in files)
         {
-            try { rules.AddRange(ParseFile(filePath)); }
+            try { rules.AddRange(ParseFile(filePath, outputOptions)); }
             catch (Exception ex)
             {
                 errors.Add($"Failed to parse {filePath}: {ex.Message}");
@@ -32,9 +33,10 @@ public class BosConfigParser
         return (rules, files.Length, errors);
     }
 
-    private static IEnumerable<BosSwapRule> ParseFile(string filePath)
+    private static IEnumerable<BosSwapRule> ParseFile(string filePath, EditOutputOptions outputOptions = default)
     {
-        var lines          = File.ReadAllLines(filePath);
+        var readPath       = EditOutputPathResolver.ResolveForRead(filePath, outputOptions);
+        var lines          = File.ReadAllLines(readPath);
         var currentSection = "Forms";
         string? currentCondition = null;
 

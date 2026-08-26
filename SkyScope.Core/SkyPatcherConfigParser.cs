@@ -24,13 +24,15 @@ public class SkyPatcherConfigParser
         return basePath;
     }
 
-    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromSkyrimDirectory(string skyrimDirectory)
+    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromSkyrimDirectory(
+        string skyrimDirectory, EditOutputOptions outputOptions = default)
     {
         var rootPath = GetSkyPatcherRootPath(skyrimDirectory);
-        return LoadConfigurationsFromDirectory(rootPath);
+        return LoadConfigurationsFromDirectory(rootPath, outputOptions);
     }
 
-    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromDirectory(string directoryPath)
+    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromDirectory(
+        string directoryPath, EditOutputOptions outputOptions = default)
     {
         if (!Directory.Exists(directoryPath))
             throw new DirectoryNotFoundException($"Directory not found: {directoryPath}");
@@ -45,7 +47,7 @@ public class SkyPatcherConfigParser
         {
             try
             {
-                var config = ParseConfigFile(filePath);
+                var config = ParseConfigFile(filePath, outputOptions);
                 if (config.Rules.Count > 0)
                     configs.Add(config);
             }
@@ -63,7 +65,7 @@ public class SkyPatcherConfigParser
     //   filterByNpcs=Plugin|FormId[,Plugin|FormId]:copyVisualStyle=V:skin=V
     //   filterByNpcEditorIds=EditorId:skin=Plugin|FormId
     //   filterByNpcNames=Name:outfitDefault=Plugin|FormId
-    public ModConfiguration ParseConfigFile(string filePath)
+    public ModConfiguration ParseConfigFile(string filePath, EditOutputOptions outputOptions = default)
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"Configuration file not found: {filePath}");
@@ -74,7 +76,10 @@ public class SkyPatcherConfigParser
             ModName  = Path.GetFileNameWithoutExtension(filePath)
         };
 
-        var lines = File.ReadAllLines(filePath);
+        // Read from the redirected output copy if one exists — some mod managers' virtual
+        // filesystems don't reliably reflect it, so we check for it explicitly.
+        var readPath = EditOutputPathResolver.ResolveForRead(filePath, outputOptions);
+        var lines = File.ReadAllLines(readPath);
 
         for (int i = 0; i < lines.Length; i++)
         {

@@ -452,10 +452,14 @@
                                                                     <TextBlock Text="No portrait" FontSize="9" Foreground="#4C566A"
                                                                                HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                                                 </StackPanel>
-                                                                <!-- Actual portrait (drawn over the placeholder when set) -->
+                                                                <!-- Actual portrait (drawn over the placeholder when set). Clickable to
+                                                                     open a larger preview. -->
                                                                 <Image Source="{Binding PortraitPath}"
                                                                        Stretch="Uniform" StretchDirection="DownOnly"
-                                                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                                       Cursor="Hand"
+                                                                       MouseLeftButtonUp="Portrait_Click"
+                                                                       ToolTip="Click to view larger"/>
                                                             </Grid>
                                                         </Border>
 

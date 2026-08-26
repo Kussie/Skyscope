@@ -9,7 +9,8 @@ namespace SkyScope.Core;
 
 public class SpidConfigParser
 {
-    public (List<DistributionRule> Rules, int FilesScanned, List<string> Errors) LoadDistributionRulesFromDirectory(string dataPath)
+    public (List<DistributionRule> Rules, int FilesScanned, List<string> Errors) LoadDistributionRulesFromDirectory(
+        string dataPath, EditOutputOptions outputOptions = default)
     {
         if (!Directory.Exists(dataPath))
             return (new(), 0, []);
@@ -20,7 +21,7 @@ public class SpidConfigParser
 
         foreach (var filePath in files)
         {
-            try { rules.AddRange(ParseFile(filePath)); }
+            try { rules.AddRange(ParseFile(filePath, outputOptions)); }
             catch (Exception ex)
             {
                 errors.Add($"Failed to parse {filePath}: {ex.Message}");
@@ -46,9 +47,10 @@ public class SpidConfigParser
         };
     }
 
-    private static IEnumerable<DistributionRule> ParseFile(string filePath)
+    private static IEnumerable<DistributionRule> ParseFile(string filePath, EditOutputOptions outputOptions = default)
     {
-        var lines = File.ReadAllLines(filePath);
+        var readPath = EditOutputPathResolver.ResolveForRead(filePath, outputOptions);
+        var lines = File.ReadAllLines(readPath);
 
         for (int i = 0; i < lines.Length; i++)
         {

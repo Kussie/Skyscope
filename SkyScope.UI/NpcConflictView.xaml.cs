@@ -36,6 +36,7 @@ public partial class NpcConflictView : ConflictViewBase
     private ModReferenceLibrary?  _library;
 
     public HistoryStore? HistoryStore { get; set; }
+    public EditOutputOptions OutputOptions { get; set; }
 
     // Distinct plugin names referenced by appearance-conflict sources, surfaced for the Settings tab.
     public IReadOnlyList<string> AppearancePlugins { get; private set; } = Array.Empty<string>();
@@ -72,6 +73,27 @@ public partial class NpcConflictView : ConflictViewBase
     {
         if (sender is TextBlock { Text: { Length: > 0 } text })
             ClipboardHelper.SetTextAsync(text, () => ClipboardCopyRequested?.Invoke(this, "Copied to clipboard"));
+    }
+
+    // Opens a larger preview of a clicked portrait thumbnail. No-op when the source has no portrait
+    // (the placeholder icon is shown instead and isn't wired to this handler).
+    private void Portrait_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: NpcTabSourceViewModel { PortraitPath: { Length: > 0 } path } src })
+            return;
+
+        var caption = string.IsNullOrEmpty(src.RulePlugin) ? src.FileName : src.RulePlugin;
+        var owner   = Window.GetWindow(this);
+        try
+        {
+            var preview = new ImagePreviewWindow(path, caption) { Owner = owner };
+            preview.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open preview:\n\n{ex.Message}", "SkyScope — Preview",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     public void Populate(ConflictSummary summary, ModReferenceLibrary? library = null)
@@ -608,12 +630,13 @@ public partial class NpcConflictView : ConflictViewBase
         {
             try
             {
+                var editPath = EditOutputPathResolver.ResolveForEdit(src.FilePath, OutputOptions);
                 var result = src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier)
                     ? ConflictResolutionHelper.RemoveNpcFromSpidLine(
-                        src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
+                        editPath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
                         description, tool(src), HistoryStore)
                     : ConflictResolutionHelper.CommentOutLine(
-                        src.FilePath, src.LineNumber, src.ConflictLineText,
+                        editPath, src.LineNumber, src.ConflictLineText,
                         description, tool(src), HistoryStore);
 
                 // Keep the other in-memory sources in the same file valid for the next edit.
@@ -661,12 +684,13 @@ public partial class NpcConflictView : ConflictViewBase
 
         try
         {
+            var editPath = EditOutputPathResolver.ResolveForEdit(src.FilePath, OutputOptions);
             var result = src.IsSpid && !string.IsNullOrEmpty(src.SpidNpcIdentifier)
                 ? ConflictResolutionHelper.RemoveNpcFromSpidLine(
-                    src.FilePath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
+                    editPath, src.LineNumber, src.ConflictLineText, src.SpidNpcIdentifier,
                     removeDescription, removeTool, HistoryStore)
                 : ConflictResolutionHelper.CommentOutLine(
-                    src.FilePath, src.LineNumber, src.ConflictLineText,
+                    editPath, src.LineNumber, src.ConflictLineText,
                     removeDescription, removeTool, HistoryStore);
 
             // Keep the other in-memory sources in the same file valid for the next edit.

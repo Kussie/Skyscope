@@ -75,7 +75,49 @@ public partial class MainWindow
             _ignoredPluginRows.Add(plugin);
         IgnoredPluginList.ItemsSource = _ignoredPluginRows;
 
+        RedirectEditsCheckBox.IsChecked = _appSettings.RedirectEditsEnabled;
+        EditOutputDirectoryTextBox.Text = _appSettings.EditOutputDirectory;
+
         UpdateSettingsEmptyState();
+    }
+
+    private void RedirectEditsCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _appSettings.RedirectEditsEnabled = RedirectEditsCheckBox.IsChecked == true;
+        PersistEditOutputSettings();
+    }
+
+    private void EditOutputDirectoryTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        _appSettings.EditOutputDirectory = EditOutputDirectoryTextBox.Text?.Trim() ?? "";
+        PersistEditOutputSettings();
+    }
+
+    private void BrowseEditOutputDir_Click(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new FolderBrowserDialog
+        {
+            Description            = "Select (or create) the folder edited copies should be written into",
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton    = true
+        };
+
+        var current = EditOutputDirectoryTextBox.Text?.Trim();
+        if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
+            dialog.InitialDirectory = current;
+
+        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        {
+            EditOutputDirectoryTextBox.Text = dialog.SelectedPath;
+            _appSettings.EditOutputDirectory = dialog.SelectedPath;
+            PersistEditOutputSettings();
+        }
+    }
+
+    private void PersistEditOutputSettings()
+    {
+        try { File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson)); }
+        catch { /* best-effort */ }
     }
 
     // Adds the plugin typed into the Ignored Plugins box. Persists immediately; the change takes

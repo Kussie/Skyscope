@@ -18,6 +18,7 @@ public partial class BosConflictView : ConflictViewBase
     private readonly ObservableCollection<BosConflictViewModel> _listSource = new();
 
     public HistoryStore? HistoryStore { get; set; }
+    public EditOutputOptions OutputOptions { get; set; }
 
     public BosConflictView()
     {
@@ -125,8 +126,9 @@ public partial class BosConflictView : ConflictViewBase
         {
             try
             {
+                var editPath = EditOutputPathResolver.ResolveForEdit(src.FilePath, OutputOptions);
                 ConflictResolutionHelper.CommentOutLine(
-                    src.FilePath, src.LineNumber, src.LineText,
+                    editPath, src.LineNumber, src.LineText,
                     description, "BOS", HistoryStore);
                 modified++;
             }

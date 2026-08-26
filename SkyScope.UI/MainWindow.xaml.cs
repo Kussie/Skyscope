@@ -101,6 +101,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        var outputOptions = new EditOutputOptions(_appSettings.RedirectEditsEnabled, skyrimPath, _appSettings.EditOutputDirectory);
+
         AnalyzeButton.IsEnabled = false;
         ReportTab.IsEnabled     = false;
         NpcTab.IsEnabled        = false;
@@ -121,7 +123,7 @@ public partial class MainWindow : Window
             try
             {
                 (configs, spFilesScanned, spErrors) = await Task.Run(() =>
-                    new SkyPatcherConfigParser().LoadConfigurationsFromSkyrimDirectory(skyrimPath));
+                    new SkyPatcherConfigParser().LoadConfigurationsFromSkyrimDirectory(skyrimPath, outputOptions));
             }
             catch (DirectoryNotFoundException ex)
             {
@@ -132,7 +134,7 @@ public partial class MainWindow : Window
 
             StatusTextBlock.Text = "Scanning SPID distribution files…";
             var (spidRules, spidFileCount, spidErrors) = await Task.Run(() =>
-                new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+                new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data"), outputOptions));
 
             // BOS support is temporarily disabled (BosScanningEnabled) — empty results flow through
             // the rest of the pipeline unchanged (empty summary, zero stats, no status suffix).
@@ -143,7 +145,7 @@ public partial class MainWindow : Window
             {
                 StatusTextBlock.Text = "Scanning Base Object Swapper files…";
                 (bosRules, bosFileCount, bosErrors) = await Task.Run(() =>
-                    new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data")));
+                    new BosConfigParser().LoadSwapRulesFromDirectory(Path.Combine(skyrimPath, "Data"), outputOptions));
             }
 
             // ── Step 2: Build reference library from parsed rules ───────────
@@ -229,9 +231,11 @@ public partial class MainWindow : Window
             DisplayResults(summary, bosSummary);
 
             WriteAnalysisLog(skyrimPath, configs, spFilesScanned, spErrors, spidRules, spidFileCount, spidErrors, bosRules, bosFileCount, bosErrors);
+            NpcConflictViewControl.OutputOptions = outputOptions;
             NpcConflictViewControl.ThumbnailDirectories = _appSettings.PluginThumbnailDirectories;
             NpcConflictViewControl.Populate(summary, library);
             MergeAppearancePlugins(NpcConflictViewControl.AppearancePlugins);
+            BosConflictViewControl.OutputOptions = outputOptions;
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;
 

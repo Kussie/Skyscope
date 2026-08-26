@@ -344,6 +344,32 @@
                                     ToolTip="Browse for Skyrim directory"/>
                         </Grid>
 
+                        <CheckBox x:Name="RedirectEditsCheckBox"
+                                  Content="Redirect edits to an output folder (don't modify installed mods)"
+                                  Foreground="#ECEFF4" FontSize="10" Margin="0,8,0,4"
+                                  Checked="RedirectEditsCheckBox_Changed"
+                                  Unchecked="RedirectEditsCheckBox_Changed"/>
+
+                        <Grid Margin="0,0,0,4" IsEnabled="{Binding IsChecked, ElementName=RedirectEditsCheckBox}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="EditOutputDirectoryTextBox"
+                                     Grid.Column="0" Height="28"
+                                     VerticalContentAlignment="Center" Padding="6,0"
+                                     Background="#2E3440" Foreground="#ECEFF4"
+                                     CaretBrush="#ECEFF4" BorderBrush="#4C566A"
+                                     BorderThickness="1" FontSize="10"
+                                     ToolTip="A folder edited copies are written into directly — e.g. a mod folder you create under MO2's mods\, or a folder in a Vortex staging area"
+                                     LostFocus="EditOutputDirectoryTextBox_LostFocus"/>
+                            <Button Grid.Column="1" Content="…"
+                                    Width="28" Height="28" Margin="4,0,0,0"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="BrowseEditOutputDir_Click"
+                                    ToolTip="Browse for (or create) the output folder"/>
+                        </Grid>
+
                         <Button x:Name="AnalyzeButton" Content="Analyze Mods"
                                 Height="36" Margin="0,10,0,6"
                                 Style="{StaticResource PrimaryButtonStyle}"
