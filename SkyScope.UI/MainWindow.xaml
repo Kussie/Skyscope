@@ -787,10 +787,16 @@
         <Border Grid.Row="2" Background="#242933" Padding="16,8">
             <Grid>
                 <TextBlock Text="SkyScope — Report tab shows a summary overview  ·  use the NPC Conflicts tab to review and resolve individual conflicts"
-                           FontSize="10" Foreground="#4C566A" VerticalAlignment="Center"/>
-                <TextBlock x:Name="VersionTextBlock"
-                           FontSize="10" Foreground="#4C566A"
-                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                           FontSize="10" Foreground="#8C9BB5" VerticalAlignment="Center"/>
+                <StackPanel x:Name="VersionPanel" Orientation="Horizontal" Background="Transparent"
+                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                            MouseLeftButtonUp="VersionPanel_Click">
+                    <TextBlock x:Name="UpdateIcon" Text="⬆" FontSize="11" FontWeight="Bold"
+                               Foreground="#A3BE8C" Margin="0,0,5,0"
+                               Visibility="Collapsed" ToolTip="A new version is available — click to view on Nexus Mods"/>
+                    <TextBlock x:Name="VersionTextBlock"
+                               FontSize="10" Foreground="#8C9BB5"/>
+                </StackPanel>
             </Grid>
         </Border>
 

@@ -1,0 +1,27 @@
+<Project>
+
+    <!-- Bump these by hand for real milestones - the last two version parts are date/commit-derived below. -->
+    <PropertyGroup>
+        <SkyScopeVersionMajor>1</SkyScopeVersionMajor>
+        <SkyScopeVersionMinor>0</SkyScopeVersionMinor>
+    </PropertyGroup>
+
+    <Target Name="ComputeSkyScopeVersion" BeforeTargets="GetAssemblyVersion;GenerateNuspec;Build" Condition="'$(SkyScopeVersion)' == ''">
+        <Exec Command="git rev-list --count HEAD" ConsoleToMsBuild="true" StandardOutputImportance="low">
+            <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitCount" />
+        </Exec>
+        <CreateProperty Value="$(SkyScopeVersionMajor).$(SkyScopeVersionMinor).$([System.DateTime]::UtcNow.ToString('yyMM')).$(GitCommitCount)">
+            <Output TaskParameter="Value" PropertyName="SkyScopeVersion" />
+        </CreateProperty>
+        <CreateProperty Value="$(SkyScopeVersion)">
+            <Output TaskParameter="Value" PropertyName="Version" />
+        </CreateProperty>
+        <CreateProperty Value="$(SkyScopeVersion)">
+            <Output TaskParameter="Value" PropertyName="AssemblyVersion" />
+        </CreateProperty>
+        <CreateProperty Value="$(SkyScopeVersion)">
+            <Output TaskParameter="Value" PropertyName="FileVersion" />
+        </CreateProperty>
+    </Target>
+
+</Project>

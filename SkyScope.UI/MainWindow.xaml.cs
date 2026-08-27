@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -39,6 +40,13 @@ public partial class MainWindow : Window
 
     private static readonly bool BosScanningEnabled = false;
 
+    private const string RepoOwner = "Kussie";
+    private const string RepoName  = "Skyscope";
+    private const string NexusUrl  = "https://www.nexusmods.com/skyrimspecialedition/mods/180947";
+
+    private string? _currentVersion;
+    private bool    _updateAvailable;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -52,19 +60,53 @@ public partial class MainWindow : Window
         LoadSettings();
         LoadAppSettings();
         LoadVersion();
+        _ = CheckForUpdatesAsync();
     }
 
     private void LoadVersion()
     {
         try
         {
-            var path    = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "version.txt");
-            var version = File.Exists(path) ? File.ReadAllText(path).Trim() : "";
-            VersionTextBlock.Text = string.IsNullOrEmpty(version) ? "development version" : version;
+            var exePath = Process.GetCurrentProcess().MainModule?.FileName;
+            _currentVersion = !string.IsNullOrEmpty(exePath)
+                ? FileVersionInfo.GetVersionInfo(exePath).FileVersion?.Trim()
+                : null;
+            VersionTextBlock.Text = string.IsNullOrEmpty(_currentVersion) ? "development version" : _currentVersion;
         }
         catch
         {
+            _currentVersion = null;
             VersionTextBlock.Text = "development version";
+        }
+    }
+
+    // Fire-and-forget from the constructor — best-effort, never blocks startup or surfaces errors.
+    private async Task CheckForUpdatesAsync()
+    {
+        if (string.IsNullOrEmpty(_currentVersion)) return;
+
+        var result = await GitHubUpdateChecker.CheckForUpdateAsync(RepoOwner, RepoName, _currentVersion);
+        if (!result.UpdateAvailable) return;
+
+        _updateAvailable = true;
+        UpdateIcon.Visibility = Visibility.Visible;
+        UpdateIcon.ToolTip = $"Version {result.LatestVersion} is available — click to view on Nexus Mods";
+        VersionPanel.Cursor = System.Windows.Input.Cursors.Hand;
+        VersionTextBlock.ToolTip = UpdateIcon.ToolTip;
+    }
+
+    private void VersionPanel_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_updateAvailable) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(NexusUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open page:\n\n{ex.Message}", "SkyScope — Update",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
