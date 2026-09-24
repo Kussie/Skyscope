@@ -1,0 +1,30 @@
+<local:ConflictViewBase x:Class="SkyScope.UI.FilesConflictView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SkyScope.UI">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ConflictViewResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <TabControl x:Name="FilesSubTabControl" Style="{StaticResource InnerTabControl}"
+                ItemContainerStyle="{StaticResource InnerTabItem}">
+
+        <TabItem x:Name="SkyPatcherFilesTab" Header="SkyPatcher">
+            <Grid Margin="0,10,0,0">
+                <local:ConfigFileListView x:Name="SkyPatcherFilesView"/>
+            </Grid>
+        </TabItem>
+
+        <TabItem x:Name="SpidFilesTab" Header="SPID">
+            <Grid Margin="0,10,0,0">
+                <local:ConfigFileListView x:Name="SpidFilesView"/>
+            </Grid>
+        </TabItem>
+
+    </TabControl>
+</local:ConflictViewBase>

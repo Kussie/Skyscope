@@ -148,6 +148,7 @@ public partial class MainWindow : Window
         AnalyzeButton.IsEnabled = false;
         ReportTab.IsEnabled     = false;
         NpcTab.IsEnabled        = false;
+        FilesTab.IsEnabled      = false;
         BosTab.IsEnabled        = false;
         MainTabControl.SelectedIndex = 0;
         try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt"), "", Encoding.UTF8); }
@@ -160,11 +161,11 @@ public partial class MainWindow : Window
             StatusTextBlock.Text = "Scanning SkyPatcher configs…";
 
             List<ModConfiguration> configs        = [];
-            int                    spFilesScanned = 0;
+            string[]               spAllFiles     = [];
             List<string>           spErrors       = [];
             try
             {
-                (configs, spFilesScanned, spErrors) = await Task.Run(() =>
+                (configs, spAllFiles, spErrors) = await Task.Run(() =>
                     new SkyPatcherConfigParser().LoadConfigurationsFromSkyrimDirectory(skyrimPath, outputOptions));
             }
             catch (DirectoryNotFoundException ex)
@@ -172,11 +173,13 @@ public partial class MainWindow : Window
                 spErrors = [ex.Message];
                 // SkyPatcher not installed — continue so SPID/BOS analysis still runs
             }
+            var spFilesScanned = spAllFiles.Length;
 
 
             StatusTextBlock.Text = "Scanning SPID distribution files…";
-            var (spidRules, spidFileCount, spidErrors) = await Task.Run(() =>
+            var (spidRules, spidAllFiles, spidErrors) = await Task.Run(() =>
                 new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data"), outputOptions));
+            var spidFileCount = spidAllFiles.Length;
 
             // BOS support is temporarily disabled (BosScanningEnabled) — empty results flow through
             // the rest of the pipeline unchanged (empty summary, zero stats, no status suffix).
@@ -268,6 +271,7 @@ public partial class MainWindow : Window
             _lastBosSummary          = bosSummary;
             ReportTab.IsEnabled  = true;
             NpcTab.IsEnabled     = true;
+            FilesTab.IsEnabled   = true;
             BosTab.IsEnabled     = BosScanningEnabled;
             MainTabControl.SelectedIndex = 1;
             DisplayResults(summary, bosSummary);
@@ -277,6 +281,7 @@ public partial class MainWindow : Window
             NpcConflictViewControl.ThumbnailDirectories = _appSettings.PluginThumbnailDirectories;
             NpcConflictViewControl.Populate(summary, library);
             MergeAppearancePlugins(NpcConflictViewControl.AppearancePlugins);
+            FilesConflictViewControl.Populate(spAllFiles, spidAllFiles, summary);
             BosConflictViewControl.OutputOptions = outputOptions;
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;

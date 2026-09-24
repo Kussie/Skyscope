@@ -9,13 +9,13 @@ namespace SkyScope.Core;
 
 public class SpidConfigParser
 {
-    public (List<DistributionRule> Rules, int FilesScanned, List<string> Errors) LoadDistributionRulesFromDirectory(
+    public (List<DistributionRule> Rules, string[] AllFiles, List<string> Errors) LoadDistributionRulesFromDirectory(
         string dataPath, EditOutputOptions outputOptions = default)
     {
         if (!Directory.Exists(dataPath))
-            return (new(), 0, []);
+            return (new(), [], []);
 
-        var files = ConfigFiles.Enumerate(dataPath, "*_DISTR.ini");
+        var files = ConfigFiles.Enumerate(dataPath, "*_DISTR.ini", SpidLoadOrderComparer.Instance);
         var rules  = new List<DistributionRule>();
         var errors = new List<string>();
 
@@ -29,7 +29,7 @@ public class SpidConfigParser
             }
         }
 
-        return (rules, files.Length, errors);
+        return (rules, files, errors);
     }
 
     private static string StripHexPrefix(string s) =>

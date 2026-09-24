@@ -64,8 +64,17 @@ public partial class App : Application
 
     private static void ShowFatalError(Exception ex)
     {
+        var details = "";
+        var current = ex;
+        while (current != null)
+        {
+            details += $"{current.GetType().Name}: {current.Message}\n\n{current.StackTrace}\n\n";
+            current = current.InnerException;
+            if (current != null) details += "--- Inner Exception ---\n";
+        }
+
         MessageBox.Show(
-            $"SkyScope encountered an unexpected error and needs to close.\n\n{ex.GetType().Name}: {ex.Message}\n\n{ex.StackTrace}",
+            $"SkyScope encountered an unexpected error and needs to close.\n\n{details}",
             "SkyScope — Unexpected Error",
             MessageBoxButton.OK,
             MessageBoxImage.Error);

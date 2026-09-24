@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -12,8 +13,11 @@ internal static class ConfigFiles
     // them (breadth-first: a folder's files before its subfolders'), excluding Vortex's
     // __folder_managed_by_vortex marker files.
     internal static string[] Enumerate(string root, string pattern) =>
+        Enumerate(root, pattern, SkyPatcherLoadOrderComparer.Instance);
+
+    internal static string[] Enumerate(string root, string pattern, IComparer<string> comparer) =>
         Directory.GetFiles(root, pattern, SearchOption.AllDirectories)
             .Where(f => !Path.GetFileName(f).Equals(VortexMarker, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(f => f, SkyPatcherLoadOrderComparer.Instance)
+            .OrderBy(f => f, comparer)
             .ToArray();
 }

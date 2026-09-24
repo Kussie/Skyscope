@@ -51,6 +51,11 @@ public partial class NpcConflictView : ConflictViewBase
     private bool _filterVanilla = true;
     private bool _filterModded  = true;
 
+    // Default expanded state for the Appearance tab's NPCs going forward (toggled via
+    // ExpandAllCheckBox, which lives on that tab only). Individual NPCs can still be
+    // collapsed/expanded by hand regardless of this — it only sets the default.
+    private bool _expandAll;
+
     private readonly ObservableCollection<NpcConflictViewModel> _appearanceListSource = new();
     private readonly ObservableCollection<NpcConflictViewModel> _outfitListSource     = new();
     private readonly ObservableCollection<NpcConflictViewModel> _skinListSource       = new();
@@ -96,6 +101,14 @@ public partial class NpcConflictView : ConflictViewBase
         }
     }
 
+    // Compact-view card click: same effect as "Make Winner" for this source. No-op when the
+    // CanClickToMakeWinner guard fails — the card is visually dimmed for these beforehand.
+    private void CompactCard_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: NpcTabSourceViewModel src }) return;
+        MakeWinner(src);
+    }
+
     public void Populate(ConflictSummary summary, ModReferenceLibrary? library = null)
     {
         if (library != null) _library = library;
@@ -128,6 +141,17 @@ public partial class NpcConflictView : ConflictViewBase
         _allOutfitNpcs     = SortAndOwn(outfitDict);
         _allSkinNpcs       = SortAndOwn(skinDict);
         _allOtherNpcs      = SortAndOwn(otherDict);
+
+        if (_expandAll)
+        {
+            foreach (var vm in _allAppearanceNpcs)
+                vm.IsExpanded = true;
+        }
+
+        // Marks these VMs (and only these) as eligible for the Appearance tab's compact view —
+        // Outfit/Skin/Other get distinct VM instances even for the same NPC, so this can never
+        // leak into their rendering regardless of the compact-view checkbox state.
+        foreach (var vm in _allAppearanceNpcs) vm.IsAppearanceTab = true;
 
         AppearancePlugins = _allAppearanceNpcs
             .SelectMany(vm => vm.Groups)
@@ -604,10 +628,30 @@ public partial class NpcConflictView : ConflictViewBase
         Populate(_lastSummary);
     }
 
+    // Sets the default expanded state for future Populate calls, and immediately applies it to
+    // every NPC currently loaded on the Appearance tab (this toggle lives there only — Outfits/
+    // Skins/Other are unaffected). Individual NPCs can still be collapsed/expanded by hand
+    // afterward regardless of this setting.
+    private void ExpandAllCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _expandAll = ExpandAllCheckBox.IsChecked == true;
+        foreach (var vm in _allAppearanceNpcs)
+            vm.IsExpanded = _expandAll;
+    }
+
     private void MakeWinner_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn) return;
         if (btn.Tag is not NpcTabSourceViewModel winner) return;
+        MakeWinner(winner);
+    }
+
+    private void MakeWinner(NpcTabSourceViewModel winner)
+    {
+        // Mirrors the DataTriggers that hide the detail-view button (NpcConflictView.xaml:365-376) —
+        // redundant there, but the real guard for the compact-view card, which has no such gating.
+        if (!winner.CanClickToMakeWinner) return;
+
         var group = winner.Group;
         if (group == null) return;
 
@@ -788,6 +832,10 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
     public string NormalizedKey         { get; set; } = "";
     public bool   IsVanilla             { get; set; }
 
+    // Set only for VMs built into the Appearance tab's list — gates the compact-view template
+    // swap so it can never apply to Outfit/Skin/Other, which get their own distinct VM instances.
+    public bool   IsAppearanceTab       { get; set; }
+
     // Distinct plugin names referenced by any of this NPC's conflict sources (copies-from /
     // outfit / skin / overhaul plugins) — used by the "Filter by plugin" search.
     public HashSet<string> InvolvedPlugins { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -863,7 +911,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public bool    IsAdditive          { get; init; }
     public bool    IsProbabilistic     { get; init; }
     private bool _canMakeWinner = true;
-    public bool    CanMakeWinner       { get => _canMakeWinner; set { _canMakeWinner = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowActions)); } }
+    public bool    CanMakeWinner       { get => _canMakeWinner; set { _canMakeWinner = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowActions)); OnPropertyChanged(nameof(CanClickToMakeWinner)); } }
     public string  SourceTool          { get; init; } = "SkyPatcher";
     public int?    SpidChance          { get; init; }
     public string? SpidNpcIdentifier   { get; init; }
@@ -894,6 +942,10 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public bool   ShowRuleValue       => !IsPlugin;
     public bool   ShowCodeContext     => !IsPlugin;
 
+    // Mirrors the DataTriggers that hide the detail-view "Make Winner" button (see NpcConflictView.xaml) —
+    // the single source of truth for whether clicking this source (button or compact card) does anything.
+    public bool   CanClickToMakeWinner => !IsAdditive && !IsProbabilistic && CanMakeWinner && !IsInactive;
+
     public int    PrecedingLineNumber  => LineNumber - 1;
     public int    FollowingLineNumber  => LineNumber + 1;
     public bool   HasPrecedingLine     => !string.IsNullOrEmpty(PrecedingLine);
@@ -905,7 +957,7 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     // Set on the losing sources after "Make Winner": the rule is now commented out, so the card is
     // greyed and struck through and its action buttons are hidden, while the winner stays active.
     private bool _isInactive;
-    public bool IsInactive { get => _isInactive; set { _isInactive = value; OnPropertyChanged(); } }
+    public bool IsInactive { get => _isInactive; set { _isInactive = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanClickToMakeWinner)); } }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? name = null)

@@ -572,6 +572,12 @@
                 </Grid>
             </TabItem>
 
+            <TabItem x:Name="FilesTab" Header="Files" IsEnabled="False">
+                <Grid Margin="16">
+                    <local:FilesConflictView x:Name="FilesConflictViewControl"/>
+                </Grid>
+            </TabItem>
+
             <TabItem x:Name="BosTab" Header="Base Object Swapper" IsEnabled="False">
                 <Grid Margin="16">
                     <local:BosConflictView x:Name="BosConflictViewControl"/>

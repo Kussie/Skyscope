@@ -24,14 +24,14 @@ public class SkyPatcherConfigParser
         return basePath;
     }
 
-    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromSkyrimDirectory(
+    public (List<ModConfiguration> Configs, string[] AllFiles, List<string> Errors) LoadConfigurationsFromSkyrimDirectory(
         string skyrimDirectory, EditOutputOptions outputOptions = default)
     {
         var rootPath = GetSkyPatcherRootPath(skyrimDirectory);
         return LoadConfigurationsFromDirectory(rootPath, outputOptions);
     }
 
-    public (List<ModConfiguration> Configs, int FilesScanned, List<string> Errors) LoadConfigurationsFromDirectory(
+    public (List<ModConfiguration> Configs, string[] AllFiles, List<string> Errors) LoadConfigurationsFromDirectory(
         string directoryPath, EditOutputOptions outputOptions = default)
     {
         if (!Directory.Exists(directoryPath))
@@ -58,7 +58,7 @@ public class SkyPatcherConfigParser
             }
         }
 
-        return (configs, iniFiles.Length, errors);
+        return (configs, iniFiles, errors);
     }
 
     // Format (no section headers) — multiple rule types may appear on one line:

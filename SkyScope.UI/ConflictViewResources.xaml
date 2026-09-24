@@ -98,6 +98,38 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Compact-view thumbnail card (Appearance tab). Green border marks the current winner;
+         non-clickable sources (already resolved, or nothing to resolve) are dimmed. -->
+    <Style x:Key="CompactSourceCard" TargetType="Border">
+        <Setter Property="Background"    Value="#434C5E"/>
+        <Setter Property="CornerRadius"  Value="4"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="BorderBrush"   Value="Transparent"/>
+        <Setter Property="Cursor"        Value="Hand"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding CanClickToMakeWinner}" Value="False">
+                <Setter Property="Opacity" Value="0.6"/>
+                <Setter Property="Cursor"  Value="Arrow"/>
+            </DataTrigger>
+            <!-- Declared after CanClickToMakeWinner so its stronger dimming wins for inactive sources. -->
+            <DataTrigger Binding="{Binding IsInactive}" Value="True">
+                <Setter Property="Opacity" Value="0.45"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsWinner}" Value="True">
+                <Setter Property="BorderBrush" Value="#A3BE8C"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Strips the default (light-themed) ToolTip chrome so a dark custom panel can be dropped in
+         as its content without a mismatched white border/background showing through. -->
+    <Style x:Key="DarkToolTip" TargetType="ToolTip">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+    </Style>
+
     <!-- Toggle checkbox used for optional filters (e.g. Show <100% SPID conflicts) -->
     <Style x:Key="FilterToggleStyle" TargetType="CheckBox">
         <Setter Property="Foreground" Value="#8C9BB5"/>
