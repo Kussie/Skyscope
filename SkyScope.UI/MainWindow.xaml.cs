@@ -54,6 +54,11 @@ public partial class MainWindow : Window
         _historyStore.Load();
         NpcConflictViewControl.HistoryStore = _historyStore;
         NpcConflictViewControl.ClipboardCopyRequested += (_, message) => ShowToast(message);
+        FilesConflictViewControl.ShowConflictsRequested += (_, file) =>
+        {
+            NpcConflictViewControl.FilterByFile(file);
+            MainTabControl.SelectedItem = NpcTab;
+        };
         BosConflictViewControl.HistoryStore = _historyStore;
         HistoryViewControl.Refresh(_historyStore);
         BosTab.Visibility = BosScanningEnabled ? Visibility.Visible : Visibility.Collapsed;

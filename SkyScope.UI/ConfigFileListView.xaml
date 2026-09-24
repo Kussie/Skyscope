@@ -29,6 +29,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" Background="#2E3440" CornerRadius="3" Margin="0,0,8,0">
@@ -61,7 +62,14 @@
                     </Grid>
                 </Border>
 
-                <TextBlock x:Name="CountText" Grid.Column="1"
+                <CheckBox x:Name="ConflictsOnlyCheckBox" Grid.Column="1"
+                          Content="Conflicts only"
+                          Style="{StaticResource FilterToggleStyle}"
+                          Margin="0,0,8,0" VerticalAlignment="Center"
+                          Checked="ConflictsOnlyCheckBox_Changed" Unchecked="ConflictsOnlyCheckBox_Changed"
+                          ToolTip="Show only files that conflict with at least one other file"/>
+
+                <TextBlock x:Name="CountText" Grid.Column="2"
                            FontSize="10" Foreground="#8C9BB5"
                            VerticalAlignment="Center" Margin="0,0,2,0"/>
             </Grid>
@@ -80,6 +88,13 @@
                 <DataTemplate>
                     <Button Tag="{Binding}" Click="FileRow_Click"
                             Style="{StaticResource ConflictHeaderButton}">
+                        <Button.ContextMenu>
+                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                <MenuItem Header="Show only conflicts for this file"
+                                          IsEnabled="{Binding HasConflicts}"
+                                          Click="ShowConflictsForFile_Click"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <Border CornerRadius="4" Margin="0,0,0,4" Padding="10,8">
                             <Border.Style>
                                 <Style TargetType="Border">

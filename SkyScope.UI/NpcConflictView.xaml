@@ -645,11 +645,31 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
+        <!-- Shown only when jumped here from the Files tab's "show only conflicts for this file" -->
+        <Border x:Name="FileFilterBanner" Grid.Row="0" Background="#3B4252" CornerRadius="4"
+                Margin="0,0,0,8" Padding="10,8" Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" FontSize="11" Foreground="#ECEFF4" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis">
+                    <Run Text="Showing conflicts involving "/>
+                    <Run x:Name="FileFilterNameRun" FontWeight="Bold" Foreground="#88C0D0"/>
+                </TextBlock>
+                <Button Grid.Column="1" Content="Clear Filter"
+                        Style="{StaticResource ConflictAccentButton}"
+                        Click="ClearFileFilter_Click"/>
+            </Grid>
+        </Border>
+
         <!-- Filter bar (shared across all four sub-tabs below) -->
-        <Border Grid.Row="0" Background="#313744" CornerRadius="4" Margin="0,0,0,8" Padding="8,6">
+        <Border Grid.Row="1" Background="#313744" CornerRadius="4" Margin="0,0,0,8" Padding="8,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -762,7 +782,7 @@
 
         <!-- Sub-tabs: Appearances / Outfits / Skins / Other (Spell + Perk). Each hosts its own
              virtualized, filtered NPC list; the filter bar above applies to whichever is active. -->
-        <TabControl x:Name="SubTabControl" Grid.Row="1" Style="{StaticResource InnerTabControl}"
+        <TabControl x:Name="SubTabControl" Grid.Row="2" Style="{StaticResource InnerTabControl}"
                     ItemContainerStyle="{StaticResource InnerTabItem}">
 
             <TabItem x:Name="AppearancesTab" Header="Appearances">

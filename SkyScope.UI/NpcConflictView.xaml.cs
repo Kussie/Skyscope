@@ -51,6 +51,11 @@ public partial class NpcConflictView : ConflictViewBase
     private bool _filterVanilla = true;
     private bool _filterModded  = true;
 
+    // Set via FilterByFile when jumping here from the Files tab's "show only conflicts for this
+    // file" context menu; null when no file filter is active.
+    private string? _fileFilter;
+    private string? _fileFilterDisplayName;
+
     // Default expanded state for the Appearance tab's NPCs going forward (toggled via
     // ExpandAllCheckBox, which lives on that tab only). Individual NPCs can still be
     // collapsed/expanded by hand regardless of this — it only sets the default.
@@ -112,6 +117,14 @@ public partial class NpcConflictView : ConflictViewBase
     public void Populate(ConflictSummary summary, ModReferenceLibrary? library = null)
     {
         if (library != null) _library = library;
+
+        // Populate() also gets re-called with the same summary by RefreshPortraits() and the
+        // checkbox filters — only a genuinely new analysis should drop an active file filter.
+        if (!ReferenceEquals(summary, _lastSummary))
+        {
+            _fileFilter = null;
+            FileFilterBanner.Visibility = Visibility.Collapsed;
+        }
         _lastSummary = summary;
 
         foreach (var vm in AllNpcVms())
@@ -283,6 +296,7 @@ public partial class NpcConflictView : ConflictViewBase
                     // only surfaced in the UI ("Plugin:" row / portrait) for Appearance sources.
                     var involvedPlugin = ResolveRulePlugin(src.RuleValue, library);
                     if (!string.IsNullOrEmpty(involvedPlugin)) vm.InvolvedPlugins.Add(involvedPlugin);
+                    vm.InvolvedFiles.Add(src.FilePath);
 
                     var plugin = ruleType == RuleType.Appearance ? involvedPlugin : "";
                     return new NpcTabSourceViewModel
@@ -570,6 +584,7 @@ public partial class NpcConflictView : ConflictViewBase
             if (!string.IsNullOrEmpty(pluginFilter) &&
                 !vm.InvolvedPlugins.Any(p => p.Contains(pluginFilter, StringComparison.OrdinalIgnoreCase)))
                 return false;
+            if (_fileFilter != null && !vm.InvolvedFiles.Contains(_fileFilter)) return false;
             if (string.IsNullOrEmpty(search)) return true;
             return vm.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || vm.SubText.Contains(search, StringComparison.OrdinalIgnoreCase);
@@ -608,6 +623,47 @@ public partial class NpcConflictView : ConflictViewBase
     {
         btn.Background = active ? HexBrush(activeHex)                          : HexBrush(ColorBtnInactive);
         btn.Foreground = active ? HexBrush(activeFgHex ?? ColorBtnActiveFg)    : HexBrush(ColorBtnInactFg);
+    }
+
+    // Jump-in point from the Files tab's "show only conflicts for this file" context menu.
+    public void FilterByFile(ConfigFileViewModel file)
+    {
+        _fileFilter            = file.FullPath;
+        _fileFilterDisplayName = file.RelativePath;
+
+        SearchBox.Text       = "";
+        PluginFilterBox.Text = "";
+
+        _filterVanilla = true;
+        _filterModded  = true;
+        UpdateFilterBtn(FilterBaseButton, _filterVanilla, ColorBase);
+        UpdateFilterBtn(FilterModsButton, _filterModded, ColorMods, ColorModsFg);
+
+        FileFilterNameRun.Text       = _fileFilterDisplayName;
+        FileFilterBanner.Visibility  = Visibility.Visible;
+
+        ApplyFilter();
+
+        foreach (var (tab, listSource) in new[]
+                 {
+                     (AppearancesTab, _appearanceListSource),
+                     (OutfitsTab,     _outfitListSource),
+                     (SkinsTab,       _skinListSource),
+                     (OtherTab,       _otherListSource)
+                 })
+        {
+            if (listSource.Count == 0) continue;
+            SubTabControl.SelectedItem = tab;
+            break;
+        }
+    }
+
+    private void ClearFileFilter_Click(object sender, RoutedEventArgs e)
+    {
+        _fileFilter            = null;
+        _fileFilterDisplayName = null;
+        FileFilterBanner.Visibility = Visibility.Collapsed;
+        ApplyFilter();
     }
 
     private void SpidFilter_Changed(object sender, RoutedEventArgs e)
@@ -839,6 +895,10 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
     // Distinct plugin names referenced by any of this NPC's conflict sources (copies-from /
     // outfit / skin / overhaul plugins) — used by the "Filter by plugin" search.
     public HashSet<string> InvolvedPlugins { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // Config file paths (SkyPatcher .ini / SPID _DISTR.ini) any of this NPC's sources came from —
+    // used by the Files tab's "show only conflicts for this file" jump.
+    public HashSet<string> InvolvedFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<NpcConflictViewModel> OwnerList { get; set; } = new();
 
     public ObservableCollection<NpcConflictGroup> Groups { get; } = new();

@@ -1,3 +1,4 @@
+using System;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
@@ -9,7 +10,13 @@ public partial class FilesConflictView : ConflictViewBase
     public FilesConflictView()
     {
         InitializeComponent();
+        SkyPatcherFilesView.ShowConflictsRequested += (_, file) => ShowConflictsRequested?.Invoke(this, file);
+        SpidFilesView.ShowConflictsRequested       += (_, file) => ShowConflictsRequested?.Invoke(this, file);
     }
+
+    // Raised when a file's "Show only conflicts for this file" context menu item is picked, from
+    // either sub-tab — bubbles up to MainWindow to switch to the NPC tab and apply the filter.
+    public event EventHandler<ConfigFileViewModel>? ShowConflictsRequested;
 
     public void Clear()
     {

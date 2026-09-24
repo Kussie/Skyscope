@@ -53,6 +53,15 @@ public partial class ConfigFileListView : ConflictViewBase
         FileList.ItemsSource = _listSource;
     }
 
+    // Raised when "Show only conflicts for this file" is picked from a row's context menu.
+    public event EventHandler<ConfigFileViewModel>? ShowConflictsRequested;
+
+    private void ShowConflictsForFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ConfigFileViewModel vm }) return;
+        ShowConflictsRequested?.Invoke(this, vm);
+    }
+
     public void Clear()
     {
         _selected = null;
@@ -60,6 +69,7 @@ public partial class ConfigFileListView : ConflictViewBase
         _listSource.Clear();
         _conflictsByFile.Clear();
         SearchBox.Text = "";
+        ConflictsOnlyCheckBox.IsChecked = false;
         _noDataMessage = "Run an analysis to populate this view.";
         EmptyText.Text       = _noDataMessage;
         EmptyText.Visibility = Visibility.Visible;
@@ -126,21 +136,27 @@ public partial class ConfigFileListView : ConflictViewBase
     private void ApplyFilter()
     {
         var term = SearchBox.Text?.Trim() ?? "";
-        var visible = string.IsNullOrEmpty(term)
-            ? _allFiles
-            : _allFiles.Where(f => f.RelativePath.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
+        var conflictsOnly = ConflictsOnlyCheckBox.IsChecked == true;
 
-        SyncList(_listSource, visible);
+        IEnumerable<ConfigFileViewModel> visible = _allFiles;
+        if (conflictsOnly) visible = visible.Where(f => f.HasConflicts);
+        if (!string.IsNullOrEmpty(term)) visible = visible.Where(f => f.RelativePath.Contains(term, StringComparison.OrdinalIgnoreCase));
+        var visibleList = visible.ToList();
 
-        UpdateEmptyState(EmptyText, _allFiles.Count > 0, _listSource.Count, _noDataMessage, "No files match your search.");
+        SyncList(_listSource, visibleList);
+
+        var noMatchMessage = conflictsOnly ? "No conflicting files found." : "No files match your search.";
+        UpdateEmptyState(EmptyText, _allFiles.Count > 0, _listSource.Count, _noDataMessage, noMatchMessage);
         CountText.Text = _allFiles.Count == 0 ? ""
-            : visible.Count == _allFiles.Count
+            : visibleList.Count == _allFiles.Count
                 ? (_allFiles.Count == 1 ? "1 file" : $"{_allFiles.Count:N0} files")
-                : $"{visible.Count:N0} / {_allFiles.Count:N0} files";
+                : $"{visibleList.Count:N0} / {_allFiles.Count:N0} files";
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) =>
         StartSearchDebounce(ApplyFilter, () => _allFiles.Count > 0);
+
+    private void ConflictsOnlyCheckBox_Changed(object sender, RoutedEventArgs e) => ApplyFilter();
 
     private void FileRow_Click(object sender, RoutedEventArgs e)
     {
