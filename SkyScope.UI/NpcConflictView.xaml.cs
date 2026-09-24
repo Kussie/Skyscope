@@ -803,11 +803,20 @@ public partial class NpcConflictView : ConflictViewBase
             return;
         }
 
+        RemoveSourceFromGroup(src);
+    }
+
+    // Drops a source from its group, cascading to drop the group/NPC once fewer than 2 remain.
+    // Shared by a direct "Remove" click and by a sibling commented out as a side effect below.
+    private void RemoveSourceFromGroup(NpcTabSourceViewModel src)
+    {
+        var group = src.Group;
+        if (group == null) return;
+
         group.Sources.Remove(src);
 
         if (group.Sources.Count < 2)
         {
-            // The conflict no longer has 2+ sources — drop the whole group.
             var vm = group.Parent;
             if (vm != null)
             {
@@ -821,7 +830,6 @@ public partial class NpcConflictView : ConflictViewBase
         }
         else
         {
-            // Group survives — re-derive positions, winner badge and Make-Winner availability.
             RefreshGroupSourceStates(group);
         }
     }
@@ -830,7 +838,11 @@ public partial class NpcConflictView : ConflictViewBase
     {
         if (result.LinesInserted == 0) return;
 
-        foreach (var s in AllSources())
+        // A sibling on the same line either survives with new text (RewrittenLine) or gets fully
+        // commented out along with it — the latter must be dropped, not left with stale text.
+        var killedSiblings = new List<NpcTabSourceViewModel>();
+
+        foreach (var s in AllSources().ToList())
         {
             if (s.SourceTool == "Plugin"
                 || !string.Equals(s.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
@@ -845,8 +857,13 @@ public partial class NpcConflictView : ConflictViewBase
                 s.LineNumber = atLine + result.LinesInserted;
                 if (result.RewrittenLine is { } rewritten)
                     s.ConflictLineText = rewritten;
+                else
+                    killedSiblings.Add(s);
             }
         }
+
+        foreach (var sibling in killedSiblings)
+            RemoveSourceFromGroup(sibling);
     }
 
     // Recomputes the NPC header's conflict-type badges (A/S/O/Sp/P) from its remaining groups.
