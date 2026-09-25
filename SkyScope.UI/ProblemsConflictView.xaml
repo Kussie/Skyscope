@@ -1,0 +1,30 @@
+<local:ConflictViewBase x:Class="SkyScope.UI.ProblemsConflictView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SkyScope.UI">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ConflictViewResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <TabControl x:Name="ProblemsSubTabControl" Style="{StaticResource InnerTabControl}"
+                ItemContainerStyle="{StaticResource InnerTabItem}">
+
+        <TabItem x:Name="SkyPatcherProblemsTab" Header="SkyPatcher">
+            <Grid Margin="0,10,0,0">
+                <local:ProblemListView x:Name="SkyPatcherProblemsView"/>
+            </Grid>
+        </TabItem>
+
+        <TabItem x:Name="SpidProblemsTab" Header="SPID">
+            <Grid Margin="0,10,0,0">
+                <local:ProblemListView x:Name="SpidProblemsView"/>
+            </Grid>
+        </TabItem>
+
+    </TabControl>
+</local:ConflictViewBase>

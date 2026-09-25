@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SkyScope.Models;
 
 namespace SkyScope.Core;
 
@@ -37,11 +38,25 @@ public static class PluginPathResolver
                 StringComparer.OrdinalIgnoreCase);
 
             var missingEsms = Directory.GetFiles(dataDir, "*.esm")
-                .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
                 .Where(f => !listed.Contains(Path.GetFileName(f)))
+                .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var missingEsmNames = new HashSet<string>(
+                missingEsms.Select(f => Path.GetFileName(f)), StringComparer.OrdinalIgnoreCase);
+
+            // Creation Club content can be enabled through Skyrim's own CC manager (Data\Skyrim.ccc)
+            // without ever being written to plugins.txt by a mod manager — same implicit-master gap
+            // as the core ESMs above.
+            var missingCc = Directory.GetFiles(dataDir, "*.esl")
+                .Concat(Directory.GetFiles(dataDir, "*.esp"))
+                .Where(f => VanillaPlugins.IsCreationClub(Path.GetFileName(f))
+                            && !listed.Contains(Path.GetFileName(f))
+                            && !missingEsmNames.Contains(Path.GetFileName(f)))
+                .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             ordered.InsertRange(0, missingEsms);
+            ordered.InsertRange(missingEsms.Count, missingCc);
             if (ordered.Count > 0) return ordered;
         }
 

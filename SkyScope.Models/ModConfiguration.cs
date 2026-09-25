@@ -155,3 +155,24 @@ public class ConflictSummary
 
     public int TotalFilesScanned { get; set; }
 }
+
+public enum ProblemSeverity { Warning, Error }
+
+// A single flagged issue in a config file — independent of conflict detection (a rule can be
+// "wrong" on its own, with no other mod involved). Produced by ProblemDetector.
+public class ProblemEntry
+{
+    public string FilePath   { get; set; } = string.Empty;
+    public int    LineNumber { get; set; }
+    public string LineText   { get; set; } = string.Empty;
+    public string SourceTool { get; set; } = string.Empty; // "SkyPatcher" | "SPID"
+    public ProblemSeverity Severity { get; set; }
+    public string Category  { get; set; } = string.Empty;  // short label, e.g. "Unresolved NPC reference"
+    public string Message   { get; set; } = string.Empty;
+}
+
+public class ProblemSummary
+{
+    public List<ProblemEntry> SkyPatcherProblems { get; set; } = [];
+    public List<ProblemEntry> SpidProblems       { get; set; } = [];
+}

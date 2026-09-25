@@ -86,6 +86,9 @@ public class ModReferenceLibrary
             _loadedPlugins.Add(name);
     }
 
+    public bool IsPluginLoaded(string pluginName) =>
+        !string.IsNullOrEmpty(pluginName) && _loadedPlugins.Contains(pluginName);
+
     // ── Registration (called by ReferenceExtractor) ───────────────────────────
 
     public void RegisterFormIdRef(string plugin, string formIdHex, KnownRecordType type)

@@ -153,6 +153,7 @@ public partial class MainWindow : Window
         AnalyzeButton.IsEnabled = false;
         ReportTab.IsEnabled     = false;
         NpcTab.IsEnabled        = false;
+        ProblemsTab.IsEnabled   = false;
         FilesTab.IsEnabled      = false;
         BosTab.IsEnabled        = false;
         MainTabControl.SelectedIndex = 0;
@@ -212,6 +213,12 @@ public partial class MainWindow : Window
             var ignoredPlugins = _appSettings.IgnoredAppearancePlugins;
             await Task.Run(() => new PluginEnricher().Enrich(library, skyrimPath, progress, ignoredPlugins));
             _stats.DbRecordCount = library.NpcRecordCount;
+
+            // ── Step 3.5: Detect config-level problems (independent of conflicts) ──
+
+            StatusTextBlock.Text = "Checking for config issues…";
+            var problemSummary = await Task.Run(() =>
+                new ProblemDetector().DetectProblems(configs, spidRules, library, spErrors, spidErrors));
 
             // ── Step 4: Bundle SPID rules + filter inactive spell/perk ──────
 
@@ -276,6 +283,7 @@ public partial class MainWindow : Window
             _lastBosSummary          = bosSummary;
             ReportTab.IsEnabled  = true;
             NpcTab.IsEnabled     = true;
+            ProblemsTab.IsEnabled = true;
             FilesTab.IsEnabled   = true;
             BosTab.IsEnabled     = BosScanningEnabled;
             MainTabControl.SelectedIndex = 1;
@@ -287,6 +295,7 @@ public partial class MainWindow : Window
             NpcConflictViewControl.Populate(summary, library);
             MergeAppearancePlugins(NpcConflictViewControl.AppearancePlugins);
             FilesConflictViewControl.Populate(spAllFiles, spidAllFiles, summary);
+            ProblemsConflictViewControl.Populate(problemSummary);
             BosConflictViewControl.OutputOptions = outputOptions;
             BosConflictViewControl.Populate(bosSummary);
             ExportReportButton.IsEnabled = summary.TotalConflicts > 0 || bosSummary.TotalConflicts > 0;

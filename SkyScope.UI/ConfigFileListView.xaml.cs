@@ -62,6 +62,12 @@ public partial class ConfigFileListView : ConflictViewBase
         ShowConflictsRequested?.Invoke(this, vm);
     }
 
+    private void OpenFileForRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ConfigFileViewModel vm }) return;
+        OpenFile(vm.FullPath);
+    }
+
     public void Clear()
     {
         _selected = null;

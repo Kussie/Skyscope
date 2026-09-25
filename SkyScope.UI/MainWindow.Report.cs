@@ -71,6 +71,7 @@ public partial class MainWindow
         ReportPlaceholderText.Visibility = Visibility.Visible;
         ExportReportButton.IsEnabled = false;
         NpcConflictViewControl.Clear();
+        ProblemsConflictViewControl.Clear();
         FilesConflictViewControl.Clear();
         BosConflictViewControl.Clear();
         _lastSummary    = null;

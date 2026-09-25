@@ -202,6 +202,10 @@
     <SolidColorBrush x:Key="DiffAddedBackground"   Color="#1E3020"/>
     <SolidColorBrush x:Key="DiffAddedForeground"   Color="#7EC077"/>
 
+    <!-- Severity colours — used by the Problems tab's badges -->
+    <SolidColorBrush x:Key="SeverityWarningBrush" Color="#EBCB8B"/>
+    <SolidColorBrush x:Key="SeverityErrorBrush"   Color="#BF616A"/>
+
     <!-- Inner (nested) sub-tab styling — used for the NPCs tab's Appearances/Outfits/Skins/Other
          sub-tabs. Modeled on MainWindow's NordTabControl/NordTabItem but sized for a nested control. -->
     <Style x:Key="InnerTabControl" TargetType="TabControl">

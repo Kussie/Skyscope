@@ -572,6 +572,12 @@
                 </Grid>
             </TabItem>
 
+            <TabItem x:Name="ProblemsTab" Header="Problems" IsEnabled="False">
+                <Grid Margin="16">
+                    <local:ProblemsConflictView x:Name="ProblemsConflictViewControl"/>
+                </Grid>
+            </TabItem>
+
             <TabItem x:Name="FilesTab" Header="Files" IsEnabled="False">
                 <Grid Margin="16">
                     <local:FilesConflictView x:Name="FilesConflictViewControl"/>
