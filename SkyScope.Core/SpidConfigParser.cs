@@ -9,19 +9,20 @@ namespace SkyScope.Core;
 
 public class SpidConfigParser
 {
-    public (List<DistributionRule> Rules, string[] AllFiles, List<string> Errors) LoadDistributionRulesFromDirectory(
+    public (List<DistributionRule> Rules, string[] AllFiles, List<string> Errors, List<ProblemEntry> LineProblems) LoadDistributionRulesFromDirectory(
         string dataPath, EditOutputOptions outputOptions = default)
     {
         if (!Directory.Exists(dataPath))
-            return (new(), [], []);
+            return (new(), [], [], []);
 
-        var files = ConfigFiles.Enumerate(dataPath, "*_DISTR.ini", SpidLoadOrderComparer.Instance);
-        var rules  = new List<DistributionRule>();
-        var errors = new List<string>();
+        var files        = ConfigFiles.Enumerate(dataPath, "*_DISTR.ini", SpidLoadOrderComparer.Instance);
+        var rules        = new List<DistributionRule>();
+        var errors       = new List<string>();
+        var lineProblems = new List<ProblemEntry>();
 
         foreach (var filePath in files)
         {
-            try { rules.AddRange(ParseFile(filePath, outputOptions)); }
+            try { rules.AddRange(ParseFile(filePath, outputOptions, lineProblems)); }
             catch (Exception ex)
             {
                 errors.Add($"Failed to parse {filePath}: {ex.Message}");
@@ -29,7 +30,7 @@ public class SpidConfigParser
             }
         }
 
-        return (rules, files, errors);
+        return (rules, files, errors, lineProblems);
     }
 
     private static string StripHexPrefix(string s) =>
@@ -47,8 +48,14 @@ public class SpidConfigParser
         };
     }
 
-    private static IEnumerable<DistributionRule> ParseFile(string filePath, EditOutputOptions outputOptions = default)
+    // Only flags issues that don't depend on knowing SPID's full key vocabulary — many real SPID
+    // keys (Keyword=, Item=, Shout=, Package=, ...) aren't modeled by this parser at all, and an
+    // unrecognized key could be one of those rather than a typo, so unknown keys stay silent.
+    private static IEnumerable<DistributionRule> ParseFile(
+        string filePath, EditOutputOptions outputOptions = default, List<ProblemEntry>? lineProblems = null)
     {
+        lineProblems ??= [];
+
         var readPath = EditOutputPathResolver.ResolveForRead(filePath, outputOptions);
         var lines = File.ReadAllLines(readPath);
 
@@ -57,10 +64,16 @@ public class SpidConfigParser
             var line    = lines[i];
             var trimmed = line.Trim();
 
-            if (string.IsNullOrEmpty(trimmed) || trimmed[0] == ';') continue;
+            if (string.IsNullOrEmpty(trimmed) || trimmed[0] == ';' || trimmed.StartsWith("//")
+                || trimmed[0] == '[') continue;
 
             var eqIdx = trimmed.IndexOf('=');
-            if (eqIdx < 0) continue;
+            if (eqIdx < 0)
+            {
+                lineProblems.Add(NewLineProblem(filePath, i + 1, line,
+                    "Malformed line", "This line has no '=' and was ignored."));
+                continue;
+            }
 
             var keyLower = trimmed[..eqIdx].Trim().ToLowerInvariant();
             var ruleType = keyLower switch
@@ -75,7 +88,12 @@ public class SpidConfigParser
             bool isFinalOutfit = keyLower == "finaloutfit";
 
             var value = trimmed[(eqIdx + 1)..].Trim();
-            if (string.IsNullOrEmpty(value)) continue;
+            if (string.IsNullOrEmpty(value))
+            {
+                lineProblems.Add(NewLineProblem(filePath, i + 1, line,
+                    "Empty value", $"'{trimmed[..eqIdx].Trim()}' has no value and was ignored."));
+                continue;
+            }
 
             // Format: RuleValue | StringFilters | FormFilters | LevelFilters | TraitFilters | Count | Chance
             var fields    = value.Split('|');
@@ -180,8 +198,14 @@ public class SpidConfigParser
                 }
             }
 
-            // Skip rules with no targeting at all
-            if (npcRefs.Count == 0 && stringFilters.Count == 0 && formFilters.Count == 0) continue;
+            // Skip rules with no targeting at all — worth flagging (a stripped Field 1 is a common
+            // editing mistake) but not necessarily wrong, since matching every NPC can be intentional.
+            if (npcRefs.Count == 0 && stringFilters.Count == 0 && formFilters.Count == 0)
+            {
+                lineProblems.Add(NewLineProblem(filePath, i + 1, line,
+                    "No targeting", "This rule has no NPC, keyword, or faction filtering and will match every NPC."));
+                continue;
+            }
 
             // ── Field 3: LevelFilters ──────────────────────────────────────────
             if (fields.Length > 3)
@@ -234,6 +258,18 @@ public class SpidConfigParser
             };
         }
     }
+
+    private static ProblemEntry NewLineProblem(
+        string sourceFile, int lineNumber, string lineText, string category, string message) => new()
+    {
+        FilePath   = sourceFile,
+        LineNumber = lineNumber,
+        LineText   = lineText.Trim(),
+        SourceTool = "SPID",
+        Severity   = ProblemSeverity.Warning,
+        Category   = category,
+        Message    = message
+    };
 
     private static SpidTraitFilter? ParseTraitFilter(string raw)
     {

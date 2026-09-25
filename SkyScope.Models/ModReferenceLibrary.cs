@@ -53,6 +53,10 @@ public class ModReferenceLibrary
     // Validated NPC editorIds — used to reject SPID values that are keywords/factions/etc.
     private readonly HashSet<string> _npcEditorIds = new(StringComparer.OrdinalIgnoreCase);
 
+    // EditorIds of Keyword/Faction/Race/Class records across all loaded plugins — lets a bare
+    // EditorId filter (no plugin context) be checked for existence without a targeted scan.
+    private readonly HashSet<string> _attributeEditorIds = new(StringComparer.OrdinalIgnoreCase);
+
     // All plugin filenames present in the load order
     private readonly HashSet<string> _loadedPlugins = new(StringComparer.OrdinalIgnoreCase);
 
@@ -288,7 +292,9 @@ public class ModReferenceLibrary
         {
             case NpcRefType.RecordId:
             {
-                if (!uint.TryParse(npcRef.FormId, NumberStyles.HexNumber, null, out var raw))
+                var recIdHex = npcRef.FormId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                               ? npcRef.FormId[2..] : npcRef.FormId;
+                if (!uint.TryParse(recIdHex, NumberStyles.HexNumber, null, out var raw))
                     return string.Empty;
                 uint localFormId = raw & 0x00FFFFFF;
                 var  key         = (npcRef.Plugin.ToLowerInvariant(), localFormId);
@@ -362,6 +368,14 @@ public class ModReferenceLibrary
         _byEditorId.TryGetValue(editorId, out var ri) ? ri.FormId : null;
 
     public bool IsNpcEditorId(string editorId) => _npcEditorIds.Contains(editorId);
+
+    public void RegisterAttributeEditorId(string editorId)
+    {
+        if (!string.IsNullOrEmpty(editorId)) _attributeEditorIds.Add(editorId);
+    }
+
+    public bool IsKnownAttributeEditorId(string editorId) =>
+        !string.IsNullOrEmpty(editorId) && _attributeEditorIds.Contains(editorId);
 
     // ── Display name for BOS conflict entries ─────────────────────────────────
 
@@ -476,7 +490,8 @@ public class ModReferenceLibrary
 
     private (string? name, string? editorId) LookupNpc(string plugin, string formIdHex)
     {
-        if (!uint.TryParse(formIdHex, NumberStyles.HexNumber, null, out var formId)) return (null, null);
+        var hex = formIdHex.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? formIdHex[2..] : formIdHex;
+        if (!uint.TryParse(hex, NumberStyles.HexNumber, null, out var formId)) return (null, null);
         uint localFormId = formId & 0x00FFFFFF;
         var  key         = (plugin.ToLowerInvariant(), localFormId);
         return _byFormId.TryGetValue(key, out var ri) ? (ri.ResolvedName, ri.ResolvedEditorId) : (null, null);

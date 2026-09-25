@@ -6,8 +6,7 @@ using SkyScope.Models;
 namespace SkyScope.Core;
 
 // Flags issues with individual rules, independent of conflict detection (bad chance value,
-// dangling reference, duplicated line). Deliberately skips SPID Field-1 string filters — those are
-// ambiguous with keywords, and there's no keyword enrichment to rule that out safely.
+// dangling reference, duplicated line).
 public class ProblemDetector
 {
     public ProblemSummary DetectProblems(
@@ -15,7 +14,9 @@ public class ProblemDetector
         List<DistributionRule> spidRules,
         ModReferenceLibrary    library,
         List<string>           skyPatcherErrors,
-        List<string>           spidErrors)
+        List<string>           spidErrors,
+        List<ProblemEntry>?    skyPatcherLineProblems = null,
+        List<ProblemEntry>?    spidLineProblems       = null)
     {
         var summary = new ProblemSummary();
 
@@ -23,6 +24,9 @@ public class ProblemDetector
             summary.SkyPatcherProblems.Add(ParseFileError(err, "SkyPatcher"));
         foreach (var err in spidErrors)
             summary.SpidProblems.Add(ParseFileError(err, "SPID"));
+
+        if (skyPatcherLineProblems != null) summary.SkyPatcherProblems.AddRange(skyPatcherLineProblems);
+        if (spidLineProblems != null)       summary.SpidProblems.AddRange(spidLineProblems);
 
         var skyPatcherRules = skyPatcherConfigs.SelectMany(c => c.Rules).ToList();
         foreach (var rule in skyPatcherRules)
@@ -36,6 +40,8 @@ public class ProblemDetector
         {
             CheckSpidChance(rule, summary.SpidProblems);
             CheckPluginNotLoaded(rule, library, summary.SpidProblems);
+            CheckSpidFieldOneReferences(rule, library, summary.SpidProblems);
+            CheckSpidFieldTwoReferences(rule, library, summary.SpidProblems);
         }
         CheckDuplicateRules(spidRules, summary.SpidProblems);
 
@@ -69,6 +75,39 @@ public class ProblemDetector
             if (!resolved)
                 sink.Add(NewEntry(rule, "Unresolved NPC reference",
                     $"NPC reference '{npcRef.DisplayText}' was not found in any loaded plugin."));
+        }
+    }
+
+    // Field 1 is ambiguous by design (NPC name/EditorId or a keyword EditorId, resolved in that
+    // priority order at match time) — only flag a bare-text entry when it resolves as none of the
+    // three, now that keyword EditorIds are enriched too.
+    private static void CheckSpidFieldOneReferences(
+        DistributionRule rule, ModReferenceLibrary library, List<ProblemEntry> sink)
+    {
+        foreach (var sf in rule.SpidStringFilters)
+        {
+            if (!string.IsNullOrEmpty(sf.Plugin)) continue; // direct FormId ref — not ambiguous
+
+            var resolved = library.IsNpcEditorId(sf.Text)
+                           || library.FindEditorIdByName(sf.Text) != null
+                           || library.IsKnownAttributeEditorId(sf.Text);
+
+            if (!resolved)
+                sink.Add(NewEntry(rule, "Unresolved reference",
+                    $"'{sf.Text}' was not found as an NPC or a keyword in any loaded plugin."));
+        }
+    }
+
+    private static void CheckSpidFieldTwoReferences(
+        DistributionRule rule, ModReferenceLibrary library, List<ProblemEntry> sink)
+    {
+        foreach (var ff in rule.SpidFormFilters)
+        {
+            if (string.IsNullOrEmpty(ff.EditorId)) continue; // has a plugin ref instead — not ambiguous
+
+            if (!library.IsKnownAttributeEditorId(ff.EditorId))
+                sink.Add(NewEntry(rule, "Unresolved filter reference",
+                    $"'{ff.EditorId}' was not found as a faction, race, class, or keyword in any loaded plugin."));
         }
     }
 

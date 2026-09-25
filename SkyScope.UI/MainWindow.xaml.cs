@@ -166,12 +166,13 @@ public partial class MainWindow : Window
 
             StatusTextBlock.Text = "Scanning SkyPatcher configs…";
 
-            List<ModConfiguration> configs        = [];
-            string[]               spAllFiles     = [];
-            List<string>           spErrors       = [];
+            List<ModConfiguration> configs           = [];
+            string[]               spAllFiles        = [];
+            List<string>           spErrors          = [];
+            List<ProblemEntry>     spLineProblems     = [];
             try
             {
-                (configs, spAllFiles, spErrors) = await Task.Run(() =>
+                (configs, spAllFiles, spErrors, spLineProblems) = await Task.Run(() =>
                     new SkyPatcherConfigParser().LoadConfigurationsFromSkyrimDirectory(skyrimPath, outputOptions));
             }
             catch (DirectoryNotFoundException ex)
@@ -183,7 +184,7 @@ public partial class MainWindow : Window
 
 
             StatusTextBlock.Text = "Scanning SPID distribution files…";
-            var (spidRules, spidAllFiles, spidErrors) = await Task.Run(() =>
+            var (spidRules, spidAllFiles, spidErrors, spidLineProblems) = await Task.Run(() =>
                 new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data"), outputOptions));
             var spidFileCount = spidAllFiles.Length;
 
@@ -218,7 +219,8 @@ public partial class MainWindow : Window
 
             StatusTextBlock.Text = "Checking for config issues…";
             var problemSummary = await Task.Run(() =>
-                new ProblemDetector().DetectProblems(configs, spidRules, library, spErrors, spidErrors));
+                new ProblemDetector().DetectProblems(
+                    configs, spidRules, library, spErrors, spidErrors, spLineProblems, spidLineProblems));
 
             // ── Step 4: Bundle SPID rules + filter inactive spell/perk ──────
 

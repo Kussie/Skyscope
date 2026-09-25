@@ -14,6 +14,10 @@ public class PluginEnricher
     private static readonly HashSet<string> ObjectGroups = new()
         { "STAT", "FURN", "DOOR", "ACTI", "CONT", "MISC", "MSTT", "TREE" };
 
+    // Scanned in full for every plugin (unlike SPEL/PERK/OTFT below) since a bare-EditorId filter
+    // gives no plugin hint to target a scan at.
+    private static readonly HashSet<string> AttributeGroups = new() { "KYWD", "FACT", "RACE", "CLAS" };
+
     public void Enrich(ModReferenceLibrary library, string skyrimGameDirectory,
                        IProgress<string>? progress = null,
                        IEnumerable<string>? ignoredAppearancePlugins = null)
@@ -85,6 +89,12 @@ public class PluginEnricher
                         : "";
                     progress?.Report($"  {fileName}: {npcResult.Npcs.Count} NPC record(s){strInfo}");
                 }
+
+                // ── Full Keyword/Faction/Race/Class scan (every plugin) ─────────
+                var attrResult = formParser.Parse(pluginPath, AttributeGroups);
+                foreach (var entry in attrResult.Entries)
+                    if (!string.IsNullOrEmpty(entry.EditorId))
+                        library.RegisterAttributeEditorId(entry.EditorId);
 
                 // ── Targeted SPEL/PERK/OTFT scan (only for referenced plugins) ──
                 var formGroups = new HashSet<string>();
