@@ -690,6 +690,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Text="Appearance Thumbnails"
@@ -698,21 +699,33 @@
                                        Text="Choose a folder of portrait images for each plugin referenced by the appearance conflicts. Plugins are added automatically after each analysis; saved entries persist across launches."
                                        FontSize="10" Foreground="#8C9BB5" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
+                            <CheckBox x:Name="NpcFaceFinderCheckBox" Grid.Row="2"
+                                      Content="Fetch missing portraits from npcfacefinder.com (fuzzy-matched, best effort)"
+                                      Foreground="#ECEFF4" FontSize="10" Margin="0,0,0,10"
+                                      Checked="NpcFaceFinderCheckBox_Changed"
+                                      Unchecked="NpcFaceFinderCheckBox_Changed"
+                                      ToolTip="Opt-in: when a plugin has no configured thumbnail folder, look up a community-submitted face image on npcfacefinder.com instead. Matching is name-based and not guaranteed accurate."/>
+
                             <!-- Column headers -->
-                            <Grid Grid.Row="2" Margin="0,0,0,6">
+                            <Grid Grid.Row="3" Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" MinWidth="180"/>
-                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="*" MinWidth="160"/>
+                                    <ColumnDefinition Width="1*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="32"/>
+                                    <ColumnDefinition Width="1.4*" MinWidth="140"/>
+                                    <ColumnDefinition Width="100"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Plugin"
                                            FontSize="10" FontWeight="SemiBold" Foreground="#88C0D0" Margin="2,0,8,0"/>
                                 <TextBlock Grid.Column="1" Text="Thumbnail Folder"
                                            FontSize="10" FontWeight="SemiBold" Foreground="#88C0D0" Margin="2,0,0,0"/>
+                                <TextBlock Grid.Column="4" Text="Face Finder Match"
+                                           FontSize="10" FontWeight="SemiBold" Foreground="#88C0D0" Margin="6,0,0,0"/>
                             </Grid>
 
                             <!-- Plugin list -->
-                            <Grid Grid.Row="3" MinHeight="220">
+                            <Grid Grid.Row="4" MinHeight="220">
                                 <TextBlock x:Name="SettingsEmptyText"
                                            Text="No appearance plugins yet. Run an analysis to discover them."
                                            FontSize="11" Foreground="#4C566A"
@@ -725,10 +738,12 @@
                                                 <Grid Style="{StaticResource SettingsRowStyle}"
                                                       RequestBringIntoView="SettingsRow_RequestBringIntoView">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" MinWidth="180"/>
-                                                        <ColumnDefinition Width="2*"/>
+                                                        <ColumnDefinition Width="*" MinWidth="160"/>
+                                                        <ColumnDefinition Width="1*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="32"/>
+                                                        <ColumnDefinition Width="1.4*" MinWidth="140"/>
+                                                        <ColumnDefinition Width="100"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0" Text="{Binding PluginName}"
                                                                FontSize="11" Foreground="#ECEFF4"
@@ -762,6 +777,40 @@
                                                             <Path Fill="#ECEFF4"
                                                                   Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                                                         </Viewbox>
+                                                    </Button>
+                                                    <!-- Manual npcfacefinder.com mod match — overrides the automatic fuzzy
+                                                         name match for this plugin. -->
+                                                    <TextBlock Grid.Column="4" Text="{Binding ModMatchLabel}"
+                                                               FontSize="10" Foreground="#8C9BB5"
+                                                               VerticalAlignment="Center" Margin="6,0,8,0"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding ModMatchLabel}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasModMatch}" Value="False">
+                                                                        <Setter Property="Text" Value="No manual match — using automatic guess"/>
+                                                                        <Setter Property="Foreground" Value="#4C566A"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <Button Grid.Column="5" Width="92" Height="28" Margin="4,0,0,0"
+                                                            FontSize="10"
+                                                            Tag="{Binding}"
+                                                            Click="MatchMod_Click">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                                <Setter Property="Content" Value="Match Mod…"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasModMatch}" Value="True">
+                                                                        <Setter Property="Content" Value="Change Match"/>
+                                                                        <Setter Property="Background" Value="#3F4E40"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
                                                     </Button>
                                                 </Grid>
                                             </DataTemplate>

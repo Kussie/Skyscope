@@ -302,8 +302,11 @@
                                                     </Style>
                                                 </Border.Style>
                                                 <Grid>
-                                                    <!-- Placeholder shown when this source has no portrait -->
-                                                    <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                    <!-- Placeholder shown when this source has no portrait. Tooltip explains
+                                                         why an npcfacefinder.com fetch was attempted but found nothing, so
+                                                         that's distinguishable from the feature just never having run. -->
+                                                    <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                                                ToolTip="{Binding PortraitFetchStatus}">
                                                         <StackPanel.Style>
                                                             <Style TargetType="StackPanel">
                                                                 <Style.Triggers>
@@ -328,6 +331,25 @@
                                                            Cursor="Hand"
                                                            MouseLeftButtonUp="Portrait_Click"
                                                            ToolTip="Click to view larger"/>
+
+                                                    <!-- Marks a portrait fetched from npcfacefinder.com (fuzzy-matched)
+                                                         rather than a locally-configured thumbnail. -->
+                                                    <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                            Background="#5E81AC" CornerRadius="7" Width="14" Height="14"
+                                                            ToolTip="{Binding PortraitSourceLabel}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasPortraitSourceLabel}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="?" FontSize="9" FontWeight="Bold" Foreground="#ECEFF4"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
                                                 </Grid>
                                             </Border>
 
@@ -412,7 +434,8 @@
                                                     <Border Background="#272C38" CornerRadius="4"/>
 
                                                     <!-- Placeholder shown when this source has no portrait -->
-                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                ToolTip="{Binding PortraitFetchStatus}">
                                                         <StackPanel.Style>
                                                             <Style TargetType="StackPanel">
                                                                 <Style.Triggers>
@@ -432,6 +455,25 @@
                                                     <Image Source="{Binding PortraitPath}"
                                                            Stretch="Uniform" StretchDirection="DownOnly"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                                    <!-- Marks a portrait fetched from npcfacefinder.com (fuzzy-matched)
+                                                         rather than a locally-configured thumbnail. -->
+                                                    <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                            Background="#5E81AC" CornerRadius="7" Width="14" Height="14"
+                                                            ToolTip="{Binding PortraitSourceLabel}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasPortraitSourceLabel}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="?" FontSize="9" FontWeight="Bold" Foreground="#ECEFF4"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
                                                 </Grid>
 
                                                 <TextBlock Text="{Binding FileName}" FontSize="11" Foreground="#ECEFF4"

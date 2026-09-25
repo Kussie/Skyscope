@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -43,6 +44,17 @@ public partial class NpcConflictView : ConflictViewBase
 
     // Plugin -> configured thumbnail folder (from settings.json). Set before Populate.
     public IReadOnlyDictionary<string, string>? ThumbnailDirectories { get; set; }
+
+    // Opt-in (settings.json): fetch a portrait from npcfacefinder.com when a source has none
+    // locally configured. Lazy — only attempted when the NPC's accordion is expanded.
+    public bool NpcFaceFinderEnabled { get; set; }
+
+    // Plugin -> manually-picked npcfacefinder.com mod id (from Settings), overriding the automatic
+    // fuzzy name match for that plugin.
+    public IReadOnlyDictionary<string, int>? PluginModOverrides { get; set; }
+
+    private static readonly string ApiPortraitCacheDir =
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "apicache");
 
     // Plugin -> (FormId without extension -> image path), built once per Populate from the
     // configured thumbnail folders so each source can resolve its portrait by O(1) lookup.
@@ -166,6 +178,11 @@ public partial class NpcConflictView : ConflictViewBase
         // leak into their rendering regardless of the compact-view checkbox state.
         foreach (var vm in _allAppearanceNpcs) vm.IsAppearanceTab = true;
 
+        // Lazily fetch missing portraits from npcfacefinder.com when the user actually expands an
+        // NPC, rather than during Populate() — this step is network-bound and Populate() otherwise
+        // stays fully synchronous.
+        foreach (var vm in _allAppearanceNpcs) vm.PropertyChanged += OnNpcVmPropertyChanged;
+
         AppearancePlugins = _allAppearanceNpcs
             .SelectMany(vm => vm.Groups)
             .SelectMany(g => g.Sources)
@@ -245,6 +262,7 @@ public partial class NpcConflictView : ConflictViewBase
                     DisplayName   = entry.DisplayName,
                     SubText       = BuildSubText(entry),
                     FormId        = BuildFormId(entry, library),
+                    OriginPlugin  = BuildOriginPlugin(entry, library),
                     NormalizedKey = key,
                     IsVanilla     = ResolveIsVanilla(entry, library)
                 };
@@ -412,6 +430,134 @@ public partial class NpcConflictView : ConflictViewBase
         return string.IsNullOrEmpty(fid) ? "" : FormatFormId(fid);
     }
 
+    private void OnNpcVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(NpcConflictViewModel.IsExpanded)) return;
+        if (!NpcFaceFinderEnabled) return;
+        if (sender is not NpcConflictViewModel { IsExpanded: true } vm) return;
+
+        _ = FetchPortraitsForNpcAsync(vm);
+    }
+
+    // Fills in portraits for this NPC's Appearance sources that have none locally configured, via
+    // npcfacefinder.com: resolve the NPC's own npcfacefinder id (name search, filtered to an exact
+    // source+ref_id match), fetch its face list once, then fuzzy-match each source's own overhaul
+    // plugin against the face list independently (different sources can match different faces).
+    private async Task FetchPortraitsForNpcAsync(NpcConflictViewModel vm)
+    {
+        var candidates = vm.Groups
+            .Where(g => g.RuleType == RuleType.Appearance)
+            .SelectMany(g => g.Sources)
+            .Where(s => s.ShowPortrait && !s.HasPortrait && !s.PortraitFetchAttempted)
+            .ToList();
+        if (candidates.Count == 0) return;
+
+        foreach (var src in candidates)
+            src.PortraitFetchAttempted = true;
+
+        if (string.IsNullOrEmpty(vm.OriginPlugin) || string.IsNullOrEmpty(vm.FormId))
+        {
+            SetStatus(candidates, "npcfacefinder.com: couldn't resolve this NPC's origin plugin/FormId.");
+            return;
+        }
+
+        var searchName = ExtractSearchName(vm.DisplayName);
+        var npcId = await NpcFaceFinderClient.FindNpcIdAsync(searchName, vm.OriginPlugin, vm.FormId);
+
+        // When no full name was resolved, DisplayName falls back to the bare EditorId — often a
+        // concatenated "FirstLast" with no space (e.g. "AlexiaVici"), which npcfacefinder's search
+        // doesn't fuzzy-match against its stored "Alexia Vici". Retry once with the EditorId split
+        // on CamelCase boundaries (the same logic already used for plugin filenames).
+        if (npcId == null && !searchName.Contains(' '))
+        {
+            var spaced = ModNameMatcher.DeriveFriendlyName(searchName);
+            if (!string.IsNullOrEmpty(spaced) && spaced != searchName)
+                npcId = await NpcFaceFinderClient.FindNpcIdAsync(spaced, vm.OriginPlugin, vm.FormId);
+        }
+
+        if (npcId == null)
+        {
+            SetStatus(candidates, $"npcfacefinder.com: no NPC named '{vm.DisplayName}' from {vm.OriginPlugin} was found.");
+            return;
+        }
+
+        var faces = await NpcFaceFinderClient.GetFacesAsync(npcId.Value);
+        if (faces.Count == 0)
+        {
+            SetStatus(candidates, "npcfacefinder.com: this NPC has no submitted face images.");
+            return;
+        }
+
+        foreach (var src in candidates)
+        {
+            if (string.IsNullOrEmpty(src.RulePlugin))
+            {
+                src.PortraitFetchStatus = "Couldn't identify the source plugin for this rule.";
+                continue;
+            }
+
+            NpcFaceFinderFace? face;
+            bool manual;
+
+            // A manual override wins outright — if the override's mod has no face for this NPC,
+            // that's left as "no confident match" rather than falling back to a fuzzy guess, since
+            // the override exists specifically to replace guessing.
+            if (PluginModOverrides != null && PluginModOverrides.TryGetValue(src.RulePlugin, out var overrideModId))
+            {
+                face   = faces.FirstOrDefault(f => f.ModId == overrideModId);
+                manual = true;
+                if (face == null)
+                {
+                    src.PortraitFetchStatus = "The manually-matched mod has no face image for this NPC.";
+                    continue;
+                }
+            }
+            else
+            {
+                var match = ModNameMatcher.FindBestMatch(src.RulePlugin, faces);
+                if (match == null)
+                {
+                    src.PortraitFetchStatus = $"No confident npcfacefinder.com match found for '{src.RulePlugin}' among {faces.Count} candidate face(s).";
+                    continue;
+                }
+                face   = match.Value.Face;
+                manual = false;
+            }
+
+            var cachePath = Path.Combine(ApiPortraitCacheDir, src.RulePlugin, $"{vm.FormId}.png");
+            if (!File.Exists(cachePath))
+            {
+                var (downloaded, error) = await NpcFaceFinderClient.DownloadImageAsync(face.ImageUrl, cachePath);
+                if (!downloaded)
+                {
+                    src.PortraitFetchStatus = $"Found a match ('{face.ModName}'), but the image download failed: {error}";
+                    continue;
+                }
+            }
+
+            src.PortraitPath        = cachePath;
+            src.PortraitFetchStatus = null;
+            src.PortraitSourceLabel = manual
+                ? $"Community image via npcfacefinder.com — manually matched to '{face.ModName}'"
+                : $"Community image via npcfacefinder.com — matched to '{face.ModName}'";
+        }
+    }
+
+    private static void SetStatus(IEnumerable<NpcTabSourceViewModel> sources, string status)
+    {
+        foreach (var src in sources) src.PortraitFetchStatus = status;
+    }
+
+    // DisplayName is "EditorIdOrText (Full Name)" when a resolved full name differs from the
+    // primary identifier — the parenthetical, when present, is the better search term.
+    private static string ExtractSearchName(string displayName)
+    {
+        var parenIdx = displayName.IndexOf(" (", StringComparison.Ordinal);
+        return parenIdx > 0 && displayName.EndsWith(')')
+            ? displayName[(parenIdx + 2)..^1].Trim()
+            : displayName;
+    }
+
     // Re-resolves portraits on an already-populated view (e.g. after thumbnail folders change in
     // Settings). No-op until an analysis has populated the view.
     public void RefreshPortraits()
@@ -503,6 +649,32 @@ public partial class NpcConflictView : ConflictViewBase
         {
             var fid = library.ResolveFormIdByEditorId(entry.NpcRef.Identifier);
             if (!string.IsNullOrEmpty(fid)) return FormatFormId(fid);
+        }
+
+        return "";
+    }
+
+    // Resolves the plugin that originally defines the conflict's target NPC record — the vanilla
+    // identity npcfacefinder.com indexes NPCs under, as distinct from an individual source's own
+    // (overhaul) plugin used for portrait-matching.
+    private static string BuildOriginPlugin(ConflictEntry entry, ModReferenceLibrary? library)
+    {
+        if (entry.NpcRef.RefType == NpcRefType.RecordId)
+            return entry.NpcRef.Plugin;
+
+        if (library == null) return "";
+
+        if (!string.IsNullOrEmpty(entry.ResolvedEditorId))
+        {
+            var plugin = library.ResolvePluginByEditorId(entry.ResolvedEditorId);
+            if (!string.IsNullOrEmpty(plugin)) return plugin;
+        }
+
+        if (entry.NpcRef.RefType is NpcRefType.EditorId or NpcRefType.Name
+            && !string.IsNullOrEmpty(entry.NpcRef.Identifier))
+        {
+            var plugin = library.ResolvePluginByEditorId(entry.NpcRef.Identifier);
+            if (!string.IsNullOrEmpty(plugin)) return plugin;
         }
 
         return "";
@@ -902,6 +1074,8 @@ public class NpcConflictViewModel : INotifyPropertyChanged, IConflictItemVm
     public string DisplayName           { get; set; } = "";
     public string SubText               { get; set; } = "";
     public string FormId                { get; set; } = "";
+    // The plugin that originally defines this NPC record — used to query npcfacefinder.com.
+    public string OriginPlugin          { get; set; } = "";
     public string NormalizedKey         { get; set; } = "";
     public bool   IsVanilla             { get; set; }
 
@@ -983,8 +1157,26 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     public string  ResolvedRuleDisplay { get; init; } = "";
     public string  RulePlugin          { get; init; } = "";
     public bool    ShowPortrait        { get; init; }          // reserve the portrait column (Appearance sources)
-    public string? PortraitPath        { get; init; }          // set in future to render this source's portrait
+    // Settable so a lazy npcfacefinder.com fetch (triggered on accordion expand) can fill this in
+    // after the row is already displayed, rather than blocking Populate() on network calls.
+    private string? _portraitPath;
+    public string? PortraitPath        { get => _portraitPath; set { _portraitPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPortrait)); } }
     public bool    HasPortrait         => !string.IsNullOrEmpty(PortraitPath);
+
+    // Set only when the portrait came from npcfacefinder.com's fuzzy mod-name match, rather than a
+    // locally-configured thumbnail — shown as a small badge/tooltip so the user knows it's a
+    // best-effort community image, not a guaranteed match to this exact source.
+    private string? _portraitSourceLabel;
+    public string? PortraitSourceLabel { get => _portraitSourceLabel; set { _portraitSourceLabel = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPortraitSourceLabel)); } }
+    public bool    HasPortraitSourceLabel => !string.IsNullOrEmpty(PortraitSourceLabel);
+
+    // Guards against re-attempting a fetch every time the same NPC's accordion is re-expanded.
+    public bool    PortraitFetchAttempted { get; set; }
+
+    // Why a fetch attempt didn't produce a portrait — shown on the placeholder's tooltip so "the
+    // feature never ran" and "it ran but found nothing" aren't visually indistinguishable.
+    private string? _portraitFetchStatus;
+    public string? PortraitFetchStatus { get => _portraitFetchStatus; set { _portraitFetchStatus = value; OnPropertyChanged(); } }
     public bool    IsAdditive          { get; init; }
     public bool    IsProbabilistic     { get; init; }
     private bool _canMakeWinner = true;

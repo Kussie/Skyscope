@@ -50,11 +50,14 @@ public partial class MainWindow
             if (!string.IsNullOrWhiteSpace(kvp.Value) && !exists)
                 removedStalePaths = true;
 
+            var modId = _appSettings.PluginModOverrides.TryGetValue(kvp.Key, out var mid) ? mid : (int?)null;
             _pluginThumbnailRows.Add(new PluginThumbnailRow
             {
-                PluginName = kvp.Key,
-                Directory  = exists ? kvp.Value : "",
-                IsSaved    = exists
+                PluginName    = kvp.Key,
+                Directory     = exists ? kvp.Value : "",
+                IsSaved       = exists,
+                ModId         = modId,
+                ModMatchLabel = DescribeModMatch(modId)
             });
         }
 
@@ -77,6 +80,9 @@ public partial class MainWindow
 
         RedirectEditsCheckBox.IsChecked = _appSettings.RedirectEditsEnabled;
         EditOutputDirectoryTextBox.Text = _appSettings.EditOutputDirectory;
+        NpcFaceFinderCheckBox.IsChecked = _appSettings.NpcFaceFinderEnabled;
+        NpcConflictViewControl.NpcFaceFinderEnabled = _appSettings.NpcFaceFinderEnabled;
+        NpcConflictViewControl.PluginModOverrides   = _appSettings.PluginModOverrides;
 
         UpdateSettingsEmptyState();
     }
@@ -84,6 +90,13 @@ public partial class MainWindow
     private void RedirectEditsCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         _appSettings.RedirectEditsEnabled = RedirectEditsCheckBox.IsChecked == true;
+        PersistEditOutputSettings();
+    }
+
+    private void NpcFaceFinderCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _appSettings.NpcFaceFinderEnabled = NpcFaceFinderCheckBox.IsChecked == true;
+        NpcConflictViewControl.NpcFaceFinderEnabled = _appSettings.NpcFaceFinderEnabled;
         PersistEditOutputSettings();
     }
 
@@ -183,7 +196,14 @@ public partial class MainWindow
         foreach (var plugin in plugins)
         {
             if (string.IsNullOrEmpty(plugin) || !existing.Add(plugin)) continue;
-            _pluginThumbnailRows.Add(new PluginThumbnailRow { PluginName = plugin, Directory = "" });
+            var modId = _appSettings.PluginModOverrides.TryGetValue(plugin, out var mid) ? mid : (int?)null;
+            _pluginThumbnailRows.Add(new PluginThumbnailRow
+            {
+                PluginName    = plugin,
+                Directory     = "",
+                ModId         = modId,
+                ModMatchLabel = DescribeModMatch(modId)
+            });
             added = true;
         }
 
@@ -268,6 +288,44 @@ public partial class MainWindow
         }
     }
 
+    // No cached mod name is available at load time without a network call, so an override picked
+    // in an earlier session shows a generic label until the user reopens the picker.
+    private static string DescribeModMatch(int? modId) =>
+        modId is { } id ? $"Manually matched (mod #{id})" : "";
+
+    private void MatchMod_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: PluginThumbnailRow row }) return;
+
+        var picker = new ModMatchPickerWindow(row.PluginName, row.ModId) { Owner = this };
+        if (picker.ShowDialog() != true) return;
+
+        row.ModId = picker.SelectedModId;
+        row.ModMatchLabel = picker.SelectedModId is { } id
+            ? $"Manually matched: {picker.SelectedModName ?? $"mod #{id}"}"
+            : "";
+
+        if (picker.SelectedModId is { } newId)
+            _appSettings.PluginModOverrides[row.PluginName] = newId;
+        else
+            _appSettings.PluginModOverrides.Remove(row.PluginName);
+
+        try
+        {
+            File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson));
+            SettingsStatusText.Text = picker.SelectedModId != null
+                ? $"Matched {row.PluginName} to {picker.SelectedModName ?? "the selected mod"}."
+                : $"Cleared the manual match for {row.PluginName}.";
+
+            NpcConflictViewControl.PluginModOverrides = _appSettings.PluginModOverrides;
+            NpcConflictViewControl.RefreshPortraits();
+        }
+        catch (Exception ex)
+        {
+            SettingsStatusText.Text = $"Failed to update settings: {ex.Message}";
+        }
+    }
+
     private void SaveAppSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -309,6 +367,10 @@ public partial class MainWindow
             var thumbnailsDir = Path.Combine(baseDir, "thumbnails");
             if (!Directory.Exists(thumbnailsDir))
                 Directory.CreateDirectory(thumbnailsDir);
+
+            var apiCacheDir = Path.Combine(baseDir, "apicache");
+            if (!Directory.Exists(apiCacheDir))
+                Directory.CreateDirectory(apiCacheDir);
         }
         catch { /* best-effort */ }
     }
@@ -419,6 +481,23 @@ public class PluginThumbnailRow : INotifyPropertyChanged
     {
         get => _isSaved;
         set { _isSaved = value; OnPropertyChanged(); }
+    }
+
+    // Manual npcfacefinder.com mod override (null = none, use the automatic fuzzy match instead).
+    private int? _modId;
+    public int? ModId
+    {
+        get => _modId;
+        set { _modId = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasModMatch)); }
+    }
+
+    public bool HasModMatch => ModId.HasValue;
+
+    private string _modMatchLabel = "";
+    public string ModMatchLabel
+    {
+        get => _modMatchLabel;
+        set { _modMatchLabel = value; OnPropertyChanged(); }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

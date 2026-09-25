@@ -29,4 +29,13 @@ public class AppSettings
     // Folder edited copies are written into, preserving their Data-relative path (e.g. a mod
     // folder you created under MO2's mods\, or a folder in a Vortex staging area).
     public string EditOutputDirectory { get; set; } = "";
+
+    // When true, portraits missing from PluginThumbnailDirectories are fetched from
+    // npcfacefinder.com on demand. Opt-in since it calls a third-party site.
+    public bool NpcFaceFinderEnabled { get; set; } = false;
+
+    // Manual override for a plugin whose npcfacefinder.com mod match is wrong or missed by the
+    // automatic fuzzy name match — plugin name -> npcfacefinder mod id, picked in Settings.
+    public Dictionary<string, int> PluginModOverrides { get; set; }
+        = new(StringComparer.OrdinalIgnoreCase);
 }
