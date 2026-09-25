@@ -12,11 +12,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
@@ -50,7 +50,7 @@ jobs:
         run: Compress-Archive -Path Skyscope -DestinationPath SkyScope-${{ steps.version.outputs.tag }}.zip
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: SkyScope ${{ steps.version.outputs.tag }}
@@ -59,7 +59,7 @@ jobs:
           files: SkyScope-${{ steps.version.outputs.tag }}.zip
 
       - name: Publish to Nexus Mods
-        uses: Nexus-Mods/upload-action@main
+        uses: Nexus-Mods/upload-action@v1.0.0-beta.10
         with:
           api_key: ${{ secrets.NEXUS_API_KEY }}
           file_id: ${{ secrets.NEXUS_GROUP_ID }}
@@ -69,3 +69,5 @@ jobs:
           category: main
           archive_existing_version: true
           allow_mod_manager_download: false
+          primary_mod_manager_download: true
+          update_mod_version: true
