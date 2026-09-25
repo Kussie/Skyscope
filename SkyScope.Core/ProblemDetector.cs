@@ -94,10 +94,15 @@ public class ProblemDetector
 
             if (!resolved)
                 sink.Add(NewEntry(rule, "Unresolved reference",
-                    $"'{sf.Text}' was not found as an NPC or a keyword in any loaded plugin."));
+                    $"'{sf.Text}' was not found as an NPC or a keyword in any loaded plugin — " +
+                    "it may also be created by a script at runtime, which SkyScope can't see."));
         }
     }
 
+    // Field 2 lookups aren't restricted to keyword/faction/race/class at the engine level — any
+    // record type can be referenced by EditorId — so this checks the broader known-EditorId set,
+    // not just the attribute one. Even so, a reference can still be created by a script at runtime
+    // (common for standalone-follower factions), which no static scan can ever see.
     private static void CheckSpidFieldTwoReferences(
         DistributionRule rule, ModReferenceLibrary library, List<ProblemEntry> sink)
     {
@@ -105,9 +110,10 @@ public class ProblemDetector
         {
             if (string.IsNullOrEmpty(ff.EditorId)) continue; // has a plugin ref instead — not ambiguous
 
-            if (!library.IsKnownAttributeEditorId(ff.EditorId))
+            if (!library.IsKnownEditorId(ff.EditorId))
                 sink.Add(NewEntry(rule, "Unresolved filter reference",
-                    $"'{ff.EditorId}' was not found as a faction, race, class, or keyword in any loaded plugin."));
+                    $"'{ff.EditorId}' was not found in any loaded plugin — it may also be created " +
+                    "by a script at runtime, which SkyScope can't see."));
         }
     }
 

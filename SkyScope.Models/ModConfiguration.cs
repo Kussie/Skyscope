@@ -94,7 +94,7 @@ public class DistributionRule
     public string  LineText      { get; set; } = string.Empty;
     public string? FollowingLine { get; set; }
     public string  SourceTool    { get; set; } = "SkyPatcher";
-    public int?    SpidChance    { get; set; }
+    public double? SpidChance    { get; set; }
 }
 
 public class ConflictSource
@@ -106,7 +106,7 @@ public class ConflictSource
     public string? FollowingLine { get; set; }
     public string  RuleValue     { get; set; } = string.Empty;
     public string  SourceTool         { get; set; } = "SkyPatcher";  // "SkyPatcher" | "SPID" | "Plugin"
-    public int?    SpidChance         { get; set; }
+    public double? SpidChance         { get; set; }
     public string? SpidNpcIdentifier  { get; set; }  // exact text from SPID file that matched this conflict
     public int?    LoadOrderIndex     { get; set; }  // load-order position for "Plugin" sources; null otherwise
 }

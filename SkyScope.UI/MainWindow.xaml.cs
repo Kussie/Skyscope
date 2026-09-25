@@ -184,7 +184,7 @@ public partial class MainWindow : Window
 
 
             StatusTextBlock.Text = "Scanning SPID distribution files…";
-            var (spidRules, spidAllFiles, spidErrors, spidLineProblems) = await Task.Run(() =>
+            var (spidRules, spidAllFiles, spidErrors, spidLineProblems, spidDynamicKeywords) = await Task.Run(() =>
                 new SpidConfigParser().LoadDistributionRulesFromDirectory(Path.Combine(skyrimPath, "Data"), outputOptions));
             var spidFileCount = spidAllFiles.Length;
 
@@ -214,6 +214,12 @@ public partial class MainWindow : Window
             var ignoredPlugins = _appSettings.IgnoredAppearancePlugins;
             await Task.Run(() => new PluginEnricher().Enrich(library, skyrimPath, progress, ignoredPlugins));
             _stats.DbRecordCount = library.NpcRecordCount;
+
+            // SPID can create keywords at runtime (Keyword= with a bare EditorID) that never exist
+            // as real plugin records — register them so other files' filters referencing them
+            // aren't flagged as unresolved.
+            foreach (var kw in spidDynamicKeywords)
+                library.RegisterAttributeEditorId(kw);
 
             // ── Step 3.5: Detect config-level problems (independent of conflicts) ──
 

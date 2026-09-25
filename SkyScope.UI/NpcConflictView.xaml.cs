@@ -990,16 +990,17 @@ public class NpcTabSourceViewModel : INotifyPropertyChanged, IConflictSourceVm
     private bool _canMakeWinner = true;
     public bool    CanMakeWinner       { get => _canMakeWinner; set { _canMakeWinner = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowActions)); OnPropertyChanged(nameof(CanClickToMakeWinner)); } }
     public string  SourceTool          { get; init; } = "SkyPatcher";
-    public int?    SpidChance          { get; init; }
+    public double? SpidChance          { get; init; }
     public string? SpidNpcIdentifier   { get; init; }
     public NpcConflictGroup? Group     { get; set;  }
 
     public bool   IsSpid              => SourceTool == "SPID";
 
     // SPID chance badge — same as the Base Object Swapper tab: "Chance NN%", shown only when the
-    // SPID rule carries a chance value.
+    // SPID rule carries a chance value. Chance can be fractional (e.g. 12.5); "0.##" drops a
+    // trailing ".0" for the common whole-number case without truncating real fractional values.
     public bool   HasSpidChance       => SpidChance.HasValue;
-    public string SpidChanceBadgeText => SpidChance.HasValue ? $"Chance {SpidChance.Value}%" : "";
+    public string SpidChanceBadgeText => SpidChance.HasValue ? $"Chance {SpidChance.Value:0.##}%" : "";
 
     // Conflict type badge (same style as the Plugin badge), always shown as the last badge.
     public string TypeBadgeText       => SourceTool switch

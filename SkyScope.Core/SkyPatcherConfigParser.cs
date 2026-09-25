@@ -108,7 +108,9 @@ public class SkyPatcherConfigParser
         string line, string sourceFile, int lineNumber, string? preceding, string? following,
         List<ProblemEntry> lineProblems)
     {
-        var trimmed = line.Trim();
+        // TrimStart('﻿') guards against a stray BOM .Trim() alone won't strip (.NET doesn't
+        // treat it as whitespace), which would otherwise hide a real comment prefix from the checks below.
+        var trimmed = line.Trim().TrimStart('﻿');
         if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith(';') || trimmed.StartsWith('#')
             || trimmed.StartsWith("//") || trimmed.StartsWith('['))
             yield break;

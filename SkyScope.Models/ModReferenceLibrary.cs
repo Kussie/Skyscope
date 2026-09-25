@@ -377,6 +377,13 @@ public class ModReferenceLibrary
     public bool IsKnownAttributeEditorId(string editorId) =>
         !string.IsNullOrEmpty(editorId) && _attributeEditorIds.Contains(editorId);
 
+    // Broader than IsKnownAttributeEditorId — also covers NPC/Spell/Perk/Outfit/BOS EditorIds
+    // already indexed elsewhere. A SPID form filter can reference any record type by EditorId, not
+    // just keyword/faction/race/class, so a narrower check would misreport those as unresolved.
+    public bool IsKnownEditorId(string editorId) =>
+        !string.IsNullOrEmpty(editorId) &&
+        (_byEditorId.ContainsKey(editorId) || _attributeEditorIds.Contains(editorId));
+
     // ── Display name for BOS conflict entries ─────────────────────────────────
 
     public string? GetDisplayName(string normalizedKey)
