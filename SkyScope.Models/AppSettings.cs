@@ -7,6 +7,9 @@ namespace SkyScope.Models;
 // as additional properties over time — existing files deserialize with the new fields defaulted.
 public class AppSettings
 {
+    // Takes precedence over registry/CWD auto-detection once set (e.g. a GOG install has no registry footprint).
+    public string SkyrimPath { get; set; } = "";
+
     // Maps an appearance-conflict plugin name to a directory containing that plugin's thumbnails.
     public Dictionary<string, string> PluginThumbnailDirectories { get; set; }
         = new(StringComparer.OrdinalIgnoreCase);

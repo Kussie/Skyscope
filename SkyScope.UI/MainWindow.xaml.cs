@@ -129,7 +129,11 @@ public partial class MainWindow : Window
             dialog.InitialDirectory = current;
 
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            SkyrimPathTextBox.Text = NormaliseSkyrimPath(dialog.SelectedPath);
+        {
+            var picked = NormaliseSkyrimPath(dialog.SelectedPath);
+            SkyrimPathTextBox.Text = picked;
+            PersistSkyrimPath(picked);
+        }
     }
 
     private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
@@ -147,6 +151,8 @@ public partial class MainWindow : Window
             StatusTextBlock.Text = "Skyrim directory does not exist.";
             return;
         }
+
+        PersistSkyrimPath(skyrimPath);
 
         var outputOptions = new EditOutputOptions(_appSettings.RedirectEditsEnabled, skyrimPath, _appSettings.EditOutputDirectory);
 

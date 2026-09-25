@@ -70,6 +70,11 @@ public partial class MainWindow
             catch { /* best-effort; the in-memory rows are already cleaned */ }
         }
 
+        // A saved path always wins over registry/CWD auto-detection (LoadSettings ran first) — it's
+        // the only way a GOG (or other no-registry-footprint) install can be remembered at all.
+        if (!string.IsNullOrWhiteSpace(_appSettings.SkyrimPath) && IsSkyrimDirectory(_appSettings.SkyrimPath))
+            SkyrimPathTextBox.Text = _appSettings.SkyrimPath;
+
         PluginThumbnailList.ItemsSource = _pluginThumbnailRows;
 
         _ignoredPluginRows.Clear();
@@ -434,13 +439,37 @@ public partial class MainWindow
             {
                 using var key = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64)
                                            .OpenSubKey(subKey);
-                if (key?.GetValue(valueName) is string path && Directory.Exists(path))
+                if (key?.GetValue(valueName) is string path && IsSkyrimDirectory(path))
                     return path;
+            }
+
+            // GOG has no fixed uninstall-key name (it's keyed by a per-game numeric id), so scan
+            // every installed GOG title's path rather than guessing the id.
+            using var gogGames = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64)
+                                             .OpenSubKey(@"SOFTWARE\WOW6432Node\GOG.com\Games");
+            if (gogGames != null)
+            {
+                foreach (var gameId in gogGames.GetSubKeyNames())
+                {
+                    using var gameKey = gogGames.OpenSubKey(gameId);
+                    if (gameKey?.GetValue("path") is string path && IsSkyrimDirectory(path))
+                        return path;
+                }
             }
         }
         catch { }
 
         return null;
+    }
+
+    // Persists the confirmed Skyrim path so it survives restarts instead of being re-clobbered by
+    // registry/CWD auto-detection next launch (e.g. a GOG install picked manually via Browse).
+    private void PersistSkyrimPath(string path)
+    {
+        if (string.Equals(_appSettings.SkyrimPath, path, StringComparison.OrdinalIgnoreCase)) return;
+        _appSettings.SkyrimPath = path;
+        try { File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson)); }
+        catch { /* best-effort */ }
     }
 
     // Strips a trailing \Data or /Data segment so users can paste either the game root
