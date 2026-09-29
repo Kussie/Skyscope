@@ -10,6 +10,10 @@ public class AppSettings
     // Takes precedence over registry/CWD auto-detection once set (e.g. a GOG install has no registry footprint).
     public string SkyrimPath { get; set; } = "";
 
+    // Explicit plugins.txt location, for setups auto-detection can't find (e.g. a custom-named
+    // MO2 instance/profile). Empty means auto-detect.
+    public string PluginsTxtPath { get; set; } = "";
+
     // Maps an appearance-conflict plugin name to a directory containing that plugin's thumbnails.
     public Dictionary<string, string> PluginThumbnailDirectories { get; set; }
         = new(StringComparer.OrdinalIgnoreCase);

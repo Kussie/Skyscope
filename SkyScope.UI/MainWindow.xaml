@@ -344,6 +344,29 @@
                                     ToolTip="Browse for Skyrim directory"/>
                         </Grid>
 
+                        <TextBlock Text="Plugins List Override (optional)" FontSize="10" Foreground="#88C0D0" Margin="0,10,0,4"/>
+                        <TextBlock Text="Only needed if auto-detection finds the wrong plugins.txt — e.g. a GOG install, or a custom-named MO2 instance. Point this at the active profile's plugins.txt."
+                                   FontSize="9" Foreground="#8C9BB5" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="PluginsTxtOverrideTextBox"
+                                     Grid.Column="0" Height="28"
+                                     VerticalContentAlignment="Center" Padding="6,0"
+                                     Background="#2E3440" Foreground="#ECEFF4"
+                                     CaretBrush="#ECEFF4" BorderBrush="#4C566A"
+                                     BorderThickness="1" FontSize="10"
+                                     LostFocus="PluginsTxtOverrideTextBox_LostFocus"/>
+                            <Button Grid.Column="1" Content="…"
+                                    Width="28" Height="28" Margin="4,0,0,0"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="BrowsePluginsTxtButton_Click"
+                                    ToolTip="Browse for plugins.txt"/>
+                        </Grid>
+
                         <CheckBox x:Name="RedirectEditsCheckBox"
                                   Content="Redirect edits to an output folder (don't modify installed mods)"
                                   Foreground="#ECEFF4" FontSize="10" Margin="0,8,0,4"

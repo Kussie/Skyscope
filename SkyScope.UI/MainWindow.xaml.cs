@@ -136,6 +136,28 @@ public partial class MainWindow : Window
         }
     }
 
+    private void BrowsePluginsTxtButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "Select plugins.txt",
+            Filter = "plugins.txt|plugins.txt|Text files|*.txt|All files|*.*"
+        };
+
+        var current = PluginsTxtOverrideTextBox.Text?.Trim();
+        if (!string.IsNullOrEmpty(current) && File.Exists(current))
+            dialog.InitialDirectory = Path.GetDirectoryName(current);
+
+        if (dialog.ShowDialog() == true)
+        {
+            PluginsTxtOverrideTextBox.Text = dialog.FileName;
+            PersistPluginsTxtPath(dialog.FileName);
+        }
+    }
+
+    private void PluginsTxtOverrideTextBox_LostFocus(object sender, RoutedEventArgs e) =>
+        PersistPluginsTxtPath(PluginsTxtOverrideTextBox.Text?.Trim() ?? "");
+
     private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
     {
         var skyrimPath = NormaliseSkyrimPath(SkyrimPathTextBox.Text?.Trim() ?? "");
@@ -153,6 +175,14 @@ public partial class MainWindow : Window
         }
 
         PersistSkyrimPath(skyrimPath);
+
+        var pluginsTxtOverride = PluginsTxtOverrideTextBox.Text?.Trim() ?? "";
+        if (!string.IsNullOrEmpty(pluginsTxtOverride) && !File.Exists(pluginsTxtOverride))
+        {
+            StatusTextBlock.Text = "Plugins list override does not exist.";
+            return;
+        }
+        PersistPluginsTxtPath(pluginsTxtOverride);
 
         var outputOptions = new EditOutputOptions(_appSettings.RedirectEditsEnabled, skyrimPath, _appSettings.EditOutputDirectory);
 
@@ -209,7 +239,7 @@ public partial class MainWindow : Window
             // ── Step 2: Build reference library from parsed rules ───────────
 
             StatusTextBlock.Text = "Building reference library…";
-            var loadedPlugins = await Task.Run(() => PluginPathResolver.GetOrderedPluginNames(skyrimPath));
+            var loadedPlugins = await Task.Run(() => PluginPathResolver.GetOrderedPluginNames(skyrimPath, pluginsTxtOverride));
             var library       = new ModReferenceLibrary();
             library.SetLoadedPlugins(loadedPlugins);
             await Task.Run(() => new ReferenceExtractor().Extract(library, configs, spidRules, bosRules));
@@ -218,7 +248,7 @@ public partial class MainWindow : Window
 
             var progress = new Progress<string>(msg => StatusTextBlock.Text = msg);
             var ignoredPlugins = _appSettings.IgnoredAppearancePlugins;
-            await Task.Run(() => new PluginEnricher().Enrich(library, skyrimPath, progress, ignoredPlugins));
+            await Task.Run(() => new PluginEnricher().Enrich(library, skyrimPath, progress, ignoredPlugins, pluginsTxtOverride));
             _stats.DbRecordCount = library.NpcRecordCount;
 
             // SPID can create keywords at runtime (Keyword= with a bare EditorID) that never exist

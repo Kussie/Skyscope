@@ -8,20 +8,20 @@ namespace SkyScope.Core;
 
 public static class PluginPathResolver
 {
-    public static List<string> GetOrderedPluginPaths(string skyrimGameDirectory)
+    public static List<string> GetOrderedPluginPaths(string skyrimGameDirectory, string? pluginsTxtOverride = null)
     {
         var dataDir = Path.Combine(skyrimGameDirectory, "Data");
-        return GetOrderedPluginPathsInternal(skyrimGameDirectory, dataDir);
+        return GetOrderedPluginPathsInternal(skyrimGameDirectory, dataDir, pluginsTxtOverride);
     }
 
-    public static IReadOnlyList<string> GetOrderedPluginNames(string skyrimGameDirectory) =>
-        GetOrderedPluginPaths(skyrimGameDirectory).ConvertAll(p => Path.GetFileName(p)!);
+    public static IReadOnlyList<string> GetOrderedPluginNames(string skyrimGameDirectory, string? pluginsTxtOverride = null) =>
+        GetOrderedPluginPaths(skyrimGameDirectory, pluginsTxtOverride).ConvertAll(p => Path.GetFileName(p)!);
 
-    private static List<string> GetOrderedPluginPathsInternal(string skyrimGameDirectory, string dataDir)
+    private static List<string> GetOrderedPluginPathsInternal(string skyrimGameDirectory, string dataDir, string? pluginsTxtOverride)
     {
         if (!Directory.Exists(dataDir)) return [];
 
-        var pluginsTxt = FindPluginsTxt(skyrimGameDirectory);
+        var pluginsTxt = FindPluginsTxt(skyrimGameDirectory, pluginsTxtOverride);
         if (pluginsTxt != null)
         {
             List<string> ordered = [];
@@ -66,12 +66,20 @@ public static class PluginPathResolver
             .ToList();
     }
 
-    private static string? FindPluginsTxt(string skyrimGameDirectory)
+    private static string? FindPluginsTxt(string skyrimGameDirectory, string? pluginsTxtOverride)
     {
+        // A user-supplied path always wins — an arbitrarily-named MO2 instance/profile can't be
+        // guessed (same reason SSEEdit needs its -P flag for these setups).
+        if (!string.IsNullOrWhiteSpace(pluginsTxtOverride) && File.Exists(pluginsTxtOverride))
+            return pluginsTxtOverride;
+
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
         var se = Path.Combine(local, "Skyrim Special Edition", "plugins.txt");
         if (File.Exists(se)) return se;
+
+        var gog = Path.Combine(local, "Skyrim Special Edition GOG", "plugins.txt");
+        if (File.Exists(gog)) return gog;
 
         var vr = Path.Combine(local, "Skyrim VR", "plugins.txt");
         if (File.Exists(vr)) return vr;

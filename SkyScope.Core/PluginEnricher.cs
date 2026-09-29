@@ -20,13 +20,14 @@ public class PluginEnricher
 
     public void Enrich(ModReferenceLibrary library, string skyrimGameDirectory,
                        IProgress<string>? progress = null,
-                       IEnumerable<string>? ignoredAppearancePlugins = null)
+                       IEnumerable<string>? ignoredAppearancePlugins = null,
+                       string? pluginsTxtOverride = null)
     {
         var ignoredPlugins = ignoredAppearancePlugins != null
             ? new HashSet<string>(ignoredAppearancePlugins, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        var pluginPaths = PluginPathResolver.GetOrderedPluginPaths(skyrimGameDirectory);
+        var pluginPaths = PluginPathResolver.GetOrderedPluginPaths(skyrimGameDirectory, pluginsTxtOverride);
 
         progress?.Report($"Scanning {pluginPaths.Count} plugin(s) for NPC records…");
 

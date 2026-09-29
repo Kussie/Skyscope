@@ -75,6 +75,8 @@ public partial class MainWindow
         if (!string.IsNullOrWhiteSpace(_appSettings.SkyrimPath) && IsSkyrimDirectory(_appSettings.SkyrimPath))
             SkyrimPathTextBox.Text = _appSettings.SkyrimPath;
 
+        PluginsTxtOverrideTextBox.Text = _appSettings.PluginsTxtPath;
+
         PluginThumbnailList.ItemsSource = _pluginThumbnailRows;
 
         _ignoredPluginRows.Clear();
@@ -468,6 +470,14 @@ public partial class MainWindow
     {
         if (string.Equals(_appSettings.SkyrimPath, path, StringComparison.OrdinalIgnoreCase)) return;
         _appSettings.SkyrimPath = path;
+        try { File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson)); }
+        catch { /* best-effort */ }
+    }
+
+    private void PersistPluginsTxtPath(string path)
+    {
+        if (string.Equals(_appSettings.PluginsTxtPath, path, StringComparison.OrdinalIgnoreCase)) return;
+        _appSettings.PluginsTxtPath = path;
         try { File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson)); }
         catch { /* best-effort */ }
     }
