@@ -51,6 +51,7 @@ public class PluginEnricher
             {
                 // ── Full NPC scan ──────────────────────────────────────────
                 var npcResult = npcParser.Parse(pluginPath, bsaCache);
+                library.RegisterPluginMasters(fileName, npcResult.Masters);
 
                 foreach (var npc in npcResult.Npcs)
                 {

@@ -78,6 +78,9 @@ public class ModReferenceLibrary
     private readonly Dictionary<(string, uint), List<(string OverridePlugin, int LoadOrderIndex)>>
         _appearanceOverrides = new();
 
+    // Plugin filename → its direct master filenames, from the TES4 header.
+    private readonly Dictionary<string, List<string>> _pluginMasters = new(StringComparer.OrdinalIgnoreCase);
+
     private int _npcRecordCount;
 
     public int NpcRecordCount => _npcRecordCount;
@@ -92,6 +95,36 @@ public class ModReferenceLibrary
 
     public bool IsPluginLoaded(string pluginName) =>
         !string.IsNullOrEmpty(pluginName) && _loadedPlugins.Contains(pluginName);
+
+    public void RegisterPluginMasters(string pluginName, IEnumerable<string> masters)
+    {
+        if (string.IsNullOrEmpty(pluginName)) return;
+        _pluginMasters[pluginName] = masters.ToList();
+    }
+
+    // True when `plugin` requires `ancestor` as a master, directly or transitively (a patch of a
+    // patch) — used to tell a compatibility patch apart from a genuinely competing appearance mod.
+    public bool IsPluginDerivedFrom(string plugin, string ancestor)
+    {
+        if (string.IsNullOrEmpty(plugin) || string.IsNullOrEmpty(ancestor)
+            || string.Equals(plugin, ancestor, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { plugin };
+        var queue   = new Queue<string>();
+        queue.Enqueue(plugin);
+
+        while (queue.Count > 0)
+        {
+            if (!_pluginMasters.TryGetValue(queue.Dequeue(), out var masters)) continue;
+            foreach (var master in masters)
+            {
+                if (string.Equals(master, ancestor, StringComparison.OrdinalIgnoreCase)) return true;
+                if (visited.Add(master)) queue.Enqueue(master);
+            }
+        }
+        return false;
+    }
 
     // ── Registration (called by ReferenceExtractor) ───────────────────────────
 

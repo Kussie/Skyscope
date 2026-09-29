@@ -93,6 +93,23 @@ public class ConflictDetector
             }
         }
 
+        // Drop a source superseded by its own patch (e.g. a "-USSEP Patch.esp" that masters it) —
+        // not a competing appearance mod, just the same edit carried forward.
+        if (library != null)
+        {
+            foreach (var key in appearanceMap.Keys.ToList())
+            {
+                var (npcRef, sources) = appearanceMap[key];
+                var filtered = sources.Where(s =>
+                    s.SourceTool != "Plugin" || string.IsNullOrEmpty(s.FilePath) ||
+                    !sources.Any(other => other != s && other.SourceTool == "Plugin"
+                        && !string.IsNullOrEmpty(other.FilePath)
+                        && library.IsPluginDerivedFrom(other.FilePath, s.FilePath))).ToList();
+
+                appearanceMap[key] = (npcRef, filtered);
+            }
+        }
+
         // TotalFilesScanned is set by the caller from the actual on-disk scan count.
         var summary = new ConflictSummary();
 
