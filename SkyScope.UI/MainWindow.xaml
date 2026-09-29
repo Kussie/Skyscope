@@ -735,9 +735,9 @@
                                     <ColumnDefinition Width="*" MinWidth="160"/>
                                     <ColumnDefinition Width="1*"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="32"/>
+                                    <ColumnDefinition Width="64"/>
                                     <ColumnDefinition Width="1.4*" MinWidth="140"/>
-                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="64"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Plugin"
                                            FontSize="10" FontWeight="SemiBold" Foreground="#88C0D0" Margin="2,0,8,0"/>
@@ -764,9 +764,9 @@
                                                         <ColumnDefinition Width="*" MinWidth="160"/>
                                                         <ColumnDefinition Width="1*"/>
                                                         <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="32"/>
+                                                        <ColumnDefinition Width="64"/>
                                                         <ColumnDefinition Width="1.4*" MinWidth="140"/>
-                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="64"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0" Text="{Binding PluginName}"
                                                                FontSize="11" Foreground="#ECEFF4"
@@ -788,19 +788,30 @@
                                                             Tag="{Binding}"
                                                             Click="BrowseThumbnailDir_Click"
                                                             ToolTip="Browse for a thumbnail folder"/>
-                                                    <!-- Delete: only for folders persisted in settings.json -->
-                                                    <Button Grid.Column="3"
-                                                            Width="28" Height="28" Margin="4,0,0,0"
-                                                            Style="{StaticResource DangerButtonStyle}"
-                                                            Tag="{Binding}"
-                                                            Click="DeleteThumbnailDir_Click"
-                                                            ToolTip="Remove this saved thumbnail folder"
-                                                            Visibility="{Binding IsSaved, Converter={StaticResource BoolToVis}}">
-                                                        <Viewbox Width="14" Height="14">
-                                                            <Path Fill="#ECEFF4"
-                                                                  Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                                        </Viewbox>
-                                                    </Button>
+                                                    <!-- Delete (folder) + Ignore (plugin), side by side -->
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                        <Button Width="28" Height="28" Margin="4,0,0,0"
+                                                                Style="{StaticResource DangerButtonStyle}"
+                                                                Tag="{Binding}"
+                                                                Click="DeleteThumbnailDir_Click"
+                                                                ToolTip="Remove this saved thumbnail folder"
+                                                                Visibility="{Binding IsSaved, Converter={StaticResource BoolToVis}}">
+                                                            <Viewbox Width="14" Height="14">
+                                                                <Path Fill="#ECEFF4"
+                                                                      Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                                            </Viewbox>
+                                                        </Button>
+                                                        <Button Width="28" Height="28" Margin="4,0,0,0"
+                                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                                Tag="{Binding}"
+                                                                Click="IgnorePlugin_Click"
+                                                                ToolTip="Add to ignored plugins">
+                                                            <Viewbox Width="14" Height="14">
+                                                                <Path Fill="#ECEFF4"
+                                                                      Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/>
+                                                            </Viewbox>
+                                                        </Button>
+                                                    </StackPanel>
                                                     <!-- Manual npcfacefinder.com mod match — overrides the automatic fuzzy
                                                          name match for this plugin. -->
                                                     <TextBlock Grid.Column="4" Text="{Binding ModMatchLabel}"
@@ -819,22 +830,39 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
-                                                    <Button Grid.Column="5" Width="92" Height="28" Margin="4,0,0,0"
-                                                            FontSize="10"
-                                                            Tag="{Binding}"
-                                                            Click="MatchMod_Click">
-                                                        <Button.Style>
-                                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-                                                                <Setter Property="Content" Value="Match Mod…"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding HasModMatch}" Value="True">
-                                                                        <Setter Property="Content" Value="Change Match"/>
-                                                                        <Setter Property="Background" Value="#3F4E40"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Button.Style>
-                                                    </Button>
+                                                    <!-- Match/Change Match + Clear Match, side by side -->
+                                                    <StackPanel Grid.Column="5" Orientation="Horizontal">
+                                                        <Button Width="28" Height="28" Margin="4,0,0,0"
+                                                                Tag="{Binding}"
+                                                                Click="MatchMod_Click">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                                    <Setter Property="ToolTip" Value="Match Mod…"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HasModMatch}" Value="True">
+                                                                            <Setter Property="ToolTip" Value="Change Match"/>
+                                                                            <Setter Property="Background" Value="#3F4E40"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <Viewbox Width="14" Height="14">
+                                                                <Path Fill="#ECEFF4"
+                                                                      Data="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                                            </Viewbox>
+                                                        </Button>
+                                                        <Button Width="28" Height="28" Margin="4,0,0,0"
+                                                                Style="{StaticResource DangerButtonStyle}"
+                                                                Tag="{Binding}"
+                                                                Click="ClearMatch_Click"
+                                                                ToolTip="Clear manual match"
+                                                                Visibility="{Binding HasModMatch, Converter={StaticResource BoolToVis}}">
+                                                            <Viewbox Width="14" Height="14">
+                                                                <Path Fill="#ECEFF4"
+                                                                      Data="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                                            </Viewbox>
+                                                        </Button>
+                                                    </StackPanel>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

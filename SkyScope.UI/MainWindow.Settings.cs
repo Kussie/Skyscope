@@ -321,12 +321,21 @@ public partial class MainWindow
         var picker = new ModMatchPickerWindow(row.PluginName, row.ModId) { Owner = this };
         if (picker.ShowDialog() != true) return;
 
-        row.ModId = picker.SelectedModId;
-        row.ModMatchLabel = picker.SelectedModId is { } id
-            ? $"Manually matched: {picker.SelectedModName ?? $"mod #{id}"}"
-            : "";
+        ApplyModMatch(row, picker.SelectedModId, picker.SelectedModName);
+    }
 
-        if (picker.SelectedModId is { } newId)
+    private void ClearMatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: PluginThumbnailRow row }) return;
+        ApplyModMatch(row, null, null);
+    }
+
+    private void ApplyModMatch(PluginThumbnailRow row, int? modId, string? modName)
+    {
+        row.ModId = modId;
+        row.ModMatchLabel = modId is { } id ? $"Manually matched: {modName ?? $"mod #{id}"}" : "";
+
+        if (modId is { } newId)
             _appSettings.PluginModOverrides[row.PluginName] = newId;
         else
             _appSettings.PluginModOverrides.Remove(row.PluginName);
@@ -334,8 +343,8 @@ public partial class MainWindow
         try
         {
             File.WriteAllText(AppSettingsPath, JsonSerializer.Serialize(_appSettings, AppSettingsJson));
-            SettingsStatusText.Text = picker.SelectedModId != null
-                ? $"Matched {row.PluginName} to {picker.SelectedModName ?? "the selected mod"}."
+            SettingsStatusText.Text = modId != null
+                ? $"Matched {row.PluginName} to {modName ?? "the selected mod"}."
                 : $"Cleared the manual match for {row.PluginName}.";
 
             NpcConflictViewControl.PluginModOverrides = _appSettings.PluginModOverrides;
@@ -345,6 +354,23 @@ public partial class MainWindow
         {
             SettingsStatusText.Text = $"Failed to update settings: {ex.Message}";
         }
+    }
+
+    // Adds a plugin straight from the thumbnail list to the ignored-appearance-plugins list —
+    // shares the same dedupe/sort/persist path as typing it into the Ignored Plugins box.
+    private void IgnorePlugin_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: PluginThumbnailRow row }) return;
+
+        if (_ignoredPluginRows.Any(p => string.Equals(p, row.PluginName, StringComparison.OrdinalIgnoreCase)))
+        {
+            SettingsStatusText.Text = $"{row.PluginName} is already in the ignored list.";
+            return;
+        }
+
+        _ignoredPluginRows.Add(row.PluginName);
+        ResortIgnoredPlugins();
+        PersistIgnoredPlugins($"Added {row.PluginName} to ignored plugins. Re-run analysis to apply.");
     }
 
     private void SaveAppSettingsButton_Click(object sender, RoutedEventArgs e)
