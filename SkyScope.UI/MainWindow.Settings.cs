@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Windows;
 using FolderBrowserDialog = System.Windows.Forms.FolderBrowserDialog;
 using Microsoft.Win32;
+using SkyScope.Core;
 using SkyScope.Models;
 
 namespace SkyScope.UI;
@@ -98,6 +99,17 @@ public partial class MainWindow
     {
         _appSettings.RedirectEditsEnabled = RedirectEditsCheckBox.IsChecked == true;
         PersistEditOutputSettings();
+        PushLiveOutputOptions();
+    }
+
+    // Re-applies the redirect setting to the currently-displayed results — otherwise a change made
+    // after Analyze has already run wouldn't take effect until the next re-analysis.
+    private void PushLiveOutputOptions()
+    {
+        if (string.IsNullOrEmpty(_lastAnalyzedSkyrimPath)) return;
+        var options = new EditOutputOptions(_appSettings.RedirectEditsEnabled, _lastAnalyzedSkyrimPath, _appSettings.EditOutputDirectory);
+        NpcConflictViewControl.OutputOptions = options;
+        BosConflictViewControl.OutputOptions = options;
     }
 
     private void NpcFaceFinderCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -111,6 +123,7 @@ public partial class MainWindow
     {
         _appSettings.EditOutputDirectory = EditOutputDirectoryTextBox.Text?.Trim() ?? "";
         PersistEditOutputSettings();
+        PushLiveOutputOptions();
     }
 
     private void BrowseEditOutputDir_Click(object sender, RoutedEventArgs e)
@@ -131,6 +144,7 @@ public partial class MainWindow
             EditOutputDirectoryTextBox.Text = dialog.SelectedPath;
             _appSettings.EditOutputDirectory = dialog.SelectedPath;
             PersistEditOutputSettings();
+            PushLiveOutputOptions();
         }
     }
 

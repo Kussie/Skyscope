@@ -19,6 +19,8 @@ public partial class MainWindow : Window
     private ConflictSummary?    _lastSummary;
     private BosConflictSummary? _lastBosSummary;
     private ScanStats _stats = new();
+    // Skyrim path behind the currently-displayed results, independent of the textbox's live value.
+    private string _lastAnalyzedSkyrimPath = "";
     private const string SettingsFileName = "skyscope_settings.txt";
 
     // Per-analysis scan counters surfaced in the Report tab and exported report.
@@ -334,6 +336,7 @@ public partial class MainWindow : Window
             DisplayResults(summary, bosSummary);
 
             WriteAnalysisLog(skyrimPath, configs, spFilesScanned, spErrors, spidRules, spidFileCount, spidErrors, bosRules, bosFileCount, bosErrors);
+            _lastAnalyzedSkyrimPath = skyrimPath;
             NpcConflictViewControl.OutputOptions = outputOptions;
             NpcConflictViewControl.ThumbnailDirectories = _appSettings.PluginThumbnailDirectories;
             NpcConflictViewControl.Populate(summary, library);
