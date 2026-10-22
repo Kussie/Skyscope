@@ -63,12 +63,17 @@ public partial class MainWindow
             }
         }
 
-        // Index existing conflict entries by resolved EditorId.
+        // ResolveNames only fills ResolvedEditorId for RecordId/LocalFormId refs, so an EditorId/Name
+        // entry is still empty here — fall back to the raw identifier like FillResolvedNames does later,
+        // otherwise it's invisible below and gets rebuilt as a duplicate instead of merged into.
         var conflictByEditorId = new Dictionary<string, ConflictEntry>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in summary.OutfitDefaultConflicts)
         {
-            if (!string.IsNullOrEmpty(entry.ResolvedEditorId))
-                conflictByEditorId[entry.ResolvedEditorId] = entry;
+            var eid = entry.ResolvedEditorId;
+            if (string.IsNullOrEmpty(eid) && entry.NpcRef.RefType is NpcRefType.EditorId or NpcRefType.Name)
+                eid = entry.NpcRef.Identifier;
+            if (!string.IsNullOrEmpty(eid))
+                conflictByEditorId[eid] = entry;
         }
 
         // Group SPID rules by resolved EditorId, recording which identifier text matched.
